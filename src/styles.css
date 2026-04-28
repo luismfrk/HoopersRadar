@@ -58,7 +58,12 @@ svg {
   align-content: start;
   min-height: 100vh;
   padding: env(safe-area-inset-top) 0 calc(22px + env(safe-area-inset-bottom));
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(237, 241, 234, 0.96)),
+    url("https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=900&q=80");
+  background-attachment: fixed;
+  background-position: center;
+  background-size: cover;
 }
 
 .login-screen {
@@ -68,7 +73,7 @@ svg {
 
 .insta-auth {
   min-height: 100vh;
-  background: #ffffff;
+  background: transparent;
 }
 
 .login-hero {
@@ -99,6 +104,7 @@ svg {
   font-size: clamp(2.4rem, 12vw, 4rem);
   line-height: 0.94;
   letter-spacing: 0;
+  color: #162018;
 }
 
 .login-hero p:not(.eyebrow) {
@@ -127,7 +133,7 @@ svg {
   padding: 18px 22px 28px;
   border: 0;
   border-radius: 0;
-  background: #ffffff;
+  background: transparent;
   box-shadow: none;
   backdrop-filter: none;
 }
@@ -151,25 +157,27 @@ svg {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #111827;
+  color: #162018;
   font-size: 0.92rem;
   font-weight: 900;
+  margin-top: 12px;
 }
 
 .meta-lockup svg {
   width: 18px;
   height: 18px;
-  color: #0866ff;
+  color: #df5d38;
 }
 
 .auth-heading {
   display: grid;
   gap: 5px;
+  margin-top: 24px;
 }
 
 .auth-heading h1 {
   margin: 0;
-  color: #111827;
+  color: #162018;
   font-size: 1.55rem;
   line-height: 1.15;
   letter-spacing: 0;
@@ -178,7 +186,7 @@ svg {
 .auth-heading p {
   max-width: 34ch;
   margin: 0;
-  color: #22252a;
+  color: #4c574f;
   font-size: 0.95rem;
   line-height: 1.35;
 }
@@ -209,10 +217,10 @@ svg {
 .login-field textarea {
   width: 100%;
   min-height: 58px;
-  border: 1px solid #d0d7de;
+  border: 1px solid #cbd5e1;
   border-radius: 14px;
   background: #ffffff;
-  color: #111827;
+  color: #162018;
   outline: 0;
   padding: 0 15px;
 }
@@ -227,8 +235,8 @@ svg {
 .login-field input:focus,
 .login-field select:focus,
 .login-field textarea:focus {
-  border-color: #8b949e;
-  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
+  border-color: #162018;
+  box-shadow: 0 0 0 3px rgba(22, 32, 24, 0.12);
 }
 
 .login-split {
@@ -296,7 +304,7 @@ svg {
 }
 
 .login-button {
-  background: #0095f6;
+  background: #162018;
   color: #ffffff;
 }
 
@@ -310,9 +318,9 @@ svg {
 }
 
 .demo-button {
-  border: 1px solid rgba(23, 28, 24, 0.12);
-  background: #ffffff;
-  color: #29332c;
+  border: 2px solid #df5d38;
+  background: transparent;
+  color: #df5d38;
 }
 
 .login-switch {

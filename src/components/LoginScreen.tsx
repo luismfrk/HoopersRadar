@@ -24,7 +24,7 @@ function getAge(year: string, month: string, day: string) {
 }
 
 function LoginScreen({ onLogin, onRegister }: Props) {
-  const [mode, setMode] = useState<'login' | 'register'>('register');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -119,11 +119,11 @@ function LoginScreen({ onLogin, onRegister }: Props) {
         </div>
 
         <div className="auth-heading">
-          <h1>{mode === 'register' ? 'Comece a usar o Hoopers' : 'Entre no Hoopers'}</h1>
+          <h1>{mode === 'register' ? 'Comece a usar o Hoopers' : 'Bem-vindo ao Hoopers'}</h1>
           <p>
             {mode === 'register'
-              ? 'Cadastre-se para ver posts, treinos e rachoes de atletas do Brasil inteiro.'
-              : 'Use uma conta ja cadastrada para acessar sua timeline.'}
+              ? 'Crie sua conta para conectar com atletas e encontrar rachoes.'
+              : 'Entre com sua conta para acessar a comunidade de basquete.'}
           </p>
         </div>
 
