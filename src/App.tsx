@@ -507,7 +507,7 @@ function App() {
                       <span style={{ color: '#657067', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>ou URL</span>
                     </div>
                     <input
-                      value={profileDraft.bannerUrl.startsWith('data:') ? '' : profileDraft.bannerUrl}
+                      value={(profileDraft.bannerUrl?.startsWith('data:')) ? '' : (profileDraft.bannerUrl || '')}
                       onChange={(event) => !event.target.value.startsWith('data:') && updateProfileDraft('bannerUrl', event.target.value)}
                       placeholder="https://..."
                       style={{ marginTop: '6px' }}
@@ -525,7 +525,7 @@ function App() {
                       <span style={{ color: '#657067', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>ou URL</span>
                     </div>
                     <input
-                      value={profileDraft.avatarUrl.startsWith('data:') ? '' : profileDraft.avatarUrl}
+                      value={(profileDraft.avatarUrl?.startsWith('data:')) ? '' : (profileDraft.avatarUrl || '')}
                       onChange={(event) => !event.target.value.startsWith('data:') && updateProfileDraft('avatarUrl', event.target.value)}
                       placeholder="https://..."
                       style={{ marginTop: '6px' }}
