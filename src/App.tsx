@@ -23,6 +23,8 @@ const initialProfile: PlayerProfile = {
   characteristics: '',
   history: '',
   city: 'Mallet-PR',
+  bannerUrl: '',
+  avatarUrl: '',
 };
 
 const viewCopy: Record<View, { eyebrow: string; title: string }> = {
@@ -85,6 +87,12 @@ function App() {
     const filled = values.filter((value) => value.trim().length > 0).length;
     return Math.round((filled / values.length) * 100);
   }, [profile]);
+
+  const profileBannerStyle = profile.bannerUrl
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(22, 32, 24, 0.88), rgba(223, 93, 56, 0.78)), url("${profile.bannerUrl}")`,
+      }
+    : undefined;
 
   const visiblePosts = useMemo(() => {
     if (feedTab === 'nearby') {
@@ -207,6 +215,15 @@ function App() {
   const updateProfileDraft = (field: keyof PlayerProfile, value: string) => {
     setProfileDraft((current) => ({ ...current, [field]: value }));
     setProfileError('');
+  };
+
+  const handleImageUpload = (field: 'bannerUrl' | 'avatarUrl', file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      updateProfileDraft(field, result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
@@ -421,9 +438,15 @@ function App() {
         {activeView === 'profile' && (
           <section className="screen-stack">
             <article className="profile-hero-card">
-              <div className="profile-cover" />
+              <div className="profile-cover" style={profileBannerStyle} />
               <div className="profile-row">
-                <span className="profile-avatar">{initials(profile.name || 'Hooper')}</span>
+                <span className="profile-avatar">
+                  {profile.avatarUrl ? (
+                    <img src={profile.avatarUrl} alt={`${profile.name || 'Perfil'} avatar`} />
+                  ) : (
+                    initials(profile.name || 'Hooper')
+                  )}
+                </span>
                 <div>
                   <strong>{profile.name || 'Seu nome'}</strong>
                   <p>@{profile.username || (profile.name || 'hooper').toLowerCase().replace(/\s+/g, '.')} / {profile.city}</p>
@@ -456,6 +479,58 @@ function App() {
                     <h2>Dados do atleta</h2>
                   </div>
                   <button type="button" onClick={() => setIsEditingProfile(false)}>Cancelar</button>
+                </div>
+
+                <div className="profile-image-preview">
+                  <div className="profile-cover-preview" style={profileDraft.bannerUrl ? { backgroundImage: `linear-gradient(135deg, rgba(22, 32, 24, 0.88), rgba(223, 93, 56, 0.78)), url("${profileDraft.bannerUrl}")` } : undefined}>
+                    <span className="profile-avatar preview-avatar">
+                      {profileDraft.avatarUrl ? (
+                        <img src={profileDraft.avatarUrl} alt="Avatar preview" />
+                      ) : (
+                        initials(profileDraft.name || 'Hooper')
+                      )}
+                    </span>
+                  </div>
+                  <p className="small-meta">Cole URLs de imagem para banner e avatar para atualizar a aparência do perfil.</p>
+                </div>
+
+                <div className="profile-edit-grid two">
+                  <label className="field">
+                    <span>Banner do perfil</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => event.target.files?.[0] && handleImageUpload('bannerUrl', event.target.files[0])}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{ color: '#657067', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>ou URL</span>
+                    </div>
+                    <input
+                      value={profileDraft.bannerUrl.startsWith('data:') ? '' : profileDraft.bannerUrl}
+                      onChange={(event) => !event.target.value.startsWith('data:') && updateProfileDraft('bannerUrl', event.target.value)}
+                      placeholder="https://..."
+                      style={{ marginTop: '6px' }}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Foto do perfil</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => event.target.files?.[0] && handleImageUpload('avatarUrl', event.target.files[0])}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{ color: '#657067', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>ou URL</span>
+                    </div>
+                    <input
+                      value={profileDraft.avatarUrl.startsWith('data:') ? '' : profileDraft.avatarUrl}
+                      onChange={(event) => !event.target.value.startsWith('data:') && updateProfileDraft('avatarUrl', event.target.value)}
+                      placeholder="https://..."
+                      style={{ marginTop: '6px' }}
+                    />
+                  </label>
                 </div>
 
                 <label className="field">

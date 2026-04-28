@@ -10,6 +10,8 @@ export type PlayerProfile = {
   characteristics: string;
   history: string;
   city: string;
+  bannerUrl: string;
+  avatarUrl: string;
 };
 
 export type Partner = {

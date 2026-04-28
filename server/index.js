@@ -29,6 +29,8 @@ const initialState = {
     characteristics: '',
     history: '',
     city: 'Mallet-PR',
+    bannerUrl: '',
+    avatarUrl: '',
   },
   partners: [
     {

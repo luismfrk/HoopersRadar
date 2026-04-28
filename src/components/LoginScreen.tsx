@@ -87,6 +87,8 @@ function LoginScreen({ onLogin, onRegister }: Props) {
       characteristics,
       history,
       city: city.trim() || 'Mallet-PR',
+      bannerUrl: '',
+      avatarUrl: '',
     };
 
     setIsSubmitting(true);
