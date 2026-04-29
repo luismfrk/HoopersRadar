@@ -7,6 +7,10 @@ type Props = {
   posts: SocialPost[];
   onCreatePost: (text: string) => void;
   onTogglePost: (id: string, action: 'like' | 'repost') => void;
+  onSelectTag: (tag: string) => void;
+  selectedTag: string;
+  onClearTag: () => void;
+  onCommentPost: (id: string) => void;
 };
 
 function getInitials(name: string) {
@@ -17,7 +21,7 @@ function getInitials(name: string) {
     .join('');
 }
 
-function SocialFeed({ profile, posts, onCreatePost, onTogglePost }: Props) {
+function SocialFeed({ profile, posts, onCreatePost, onTogglePost, onSelectTag, selectedTag, onClearTag, onCommentPost }: Props) {
   const [draft, setDraft] = useState('');
 
   const authorName = profile.name.trim() || 'Voce';
@@ -54,11 +58,24 @@ function SocialFeed({ profile, posts, onCreatePost, onTogglePost }: Props) {
 
       <div className="trend-row" aria-label="Assuntos em alta">
         {trendingTags.map((tag) => (
-          <button key={tag} type="button">{tag}</button>
+          <button key={tag} type="button" onClick={() => onSelectTag(tag)}>{tag}</button>
         ))}
       </div>
 
+      {selectedTag && (
+        <div className="active-filter">
+          <span>Filtrando por #{selectedTag}</span>
+          <button type="button" onClick={onClearTag}>Limpar</button>
+        </div>
+      )}
+
       <div className="timeline-list">
+        {posts.length === 0 && (
+          <article className="empty-state">
+            Nenhum post encontrado nesse filtro. Limpe a hashtag ou publique algo novo.
+          </article>
+        )}
+
         {posts.map((post) => (
           <article key={post.id} className="social-post">
             <div className="social-avatar">{getInitials(post.author)}</div>
@@ -71,6 +88,12 @@ function SocialFeed({ profile, posts, onCreatePost, onTogglePost }: Props) {
                 <small>{post.role}</small>
               </header>
 
+              {post.imageUrl && (
+                <div className="post-image">
+                  <img src={post.imageUrl} alt={`Imagem do post de ${post.author}`} />
+                </div>
+              )}
+
               <p>{post.text}</p>
 
               <div className="post-meta">
@@ -79,7 +102,7 @@ function SocialFeed({ profile, posts, onCreatePost, onTogglePost }: Props) {
               </div>
 
               <div className="post-actions">
-                <button type="button" aria-label="Responder">
+                <button type="button" onClick={() => onCommentPost(post.id)} aria-label="Responder">
                   <Icon name="chat" />
                   {post.replies}
                 </button>

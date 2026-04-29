@@ -32,6 +32,7 @@ function LoginScreen({ onLogin, onRegister }: Props) {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
+
   const [city, setCity] = useState('Mallet-PR');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
@@ -130,29 +131,46 @@ function LoginScreen({ onLogin, onRegister }: Props) {
         <label className="login-field">
           <span>Numero de celular ou email</span>
           <input
-            type="email"
+            id="login-email"
+            name="username"
+            type="text"
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
               setError('');
             }}
             placeholder="Numero de celular ou email"
-            autoComplete="email"
+            autoComplete="username"
           />
         </label>
 
         <label className="login-field">
           <span>Senha</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setError('');
-            }}
-            placeholder="Senha"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          />
+          {mode === 'login' ? (
+            <input
+              name="password"
+              type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
+              }}
+              placeholder="Senha"
+              autoComplete="current-password"
+            />
+          ) : (
+            <input
+              name="password"
+              type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
+              }}
+              placeholder="Senha"
+              autoComplete="new-password"
+            />
+          )}
         </label>
 
         {mode === 'register' && (
@@ -208,6 +226,7 @@ function LoginScreen({ onLogin, onRegister }: Props) {
             <label className="login-field">
               <span>Nome de usuario</span>
               <input
+                name="nickname"
                 type="text"
                 value={username}
                 onChange={(event) => {
@@ -215,7 +234,7 @@ function LoginScreen({ onLogin, onRegister }: Props) {
                   setError('');
                 }}
                 placeholder="Nome de usuario"
-                autoComplete="username"
+                autoComplete="nickname"
               />
             </label>
 

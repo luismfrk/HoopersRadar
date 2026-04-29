@@ -48,7 +48,7 @@ export const api = {
       body: JSON.stringify(profile),
     });
   },
-  createPost(post: Pick<SocialPost, 'author' | 'handle' | 'role' | 'city' | 'text' | 'tag'>) {
+  createPost(post: Pick<SocialPost, 'author' | 'handle' | 'role' | 'city' | 'text' | 'tag'> & Partial<Pick<SocialPost, 'imageUrl'>>) {
     return request<SocialPost>('/posts', {
       method: 'POST',
       body: JSON.stringify(post),

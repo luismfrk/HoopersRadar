@@ -39,6 +39,18 @@ export type Court = {
   occupancy: string;
 };
 
+export type Story = {
+  id: string;
+  author: string;
+  handle: string;
+  role: string;
+  city: string;
+  time: string;
+  caption: string;
+  imageUrl: string;
+  tag: string;
+};
+
 export type SocialPost = {
   id: string;
   author: string;
@@ -48,6 +60,7 @@ export type SocialPost = {
   time: string;
   text: string;
   tag: string;
+  imageUrl?: string;
   likes: number;
   replies: number;
   reposts: number;

@@ -10,16 +10,10 @@ const stateFile = join(dataDir, 'state.json');
 const port = Number(process.env.PORT || 3001);
 
 const initialState = {
-  user: {
-    id: 'u1',
-    email: 'demo@hoopers.local',
-    password: 'demo',
-    username: 'hooperdemo',
-    token: 'demo-token',
-  },
+  user: null,
   profile: {
-    name: 'Hooper Demo',
-    username: 'hooperdemo',
+    name: '',
+    username: '',
     age: '',
     height: '',
     weight: '',
@@ -214,23 +208,20 @@ function loadState() {
 let state = loadState();
 
 state.user = {
-  id: state.user?.id || 'u1',
-  email: state.user?.email || initialState.user.email,
-  password: state.user?.password || initialState.user.password,
-  username: state.user?.username || state.profile?.username || initialState.user.username,
-  token: state.user?.token || initialState.user.token,
+  ...(state.user || {}),
 };
+if (!state.user.email) state.user = null;
 state.profile = {
   ...initialState.profile,
   ...state.profile,
-  username: state.profile?.username || state.user.username || initialState.profile.username,
+  username: state.profile?.username || state.user?.username || initialState.profile.username,
 };
 saveState();
 
 if (!state.partners?.some((partner) => partner.city === 'Mallet-PR')) {
   state = {
     ...state,
-    profile: { ...initialState.profile, name: state.profile?.name || initialState.profile.name },
+    profile: { ...initialState.profile, ...state.profile },
     partners: initialState.partners,
     courts: initialState.courts,
     posts: initialState.posts,
@@ -332,7 +323,7 @@ const server = createServer(async (req, res) => {
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');
 
-      if (!email || !password || email !== state.user.email || password !== state.user.password) {
+      if (!state.user || !email || !password || email !== state.user.email || password !== state.user.password) {
         sendJson(res, 401, { error: 'Conta nao cadastrada ou senha incorreta' });
         return;
       }
@@ -355,7 +346,7 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      if (email === state.user.email && state.user.email !== initialState.user.email) {
+      if (state.user && email === state.user.email) {
         sendJson(res, 409, { error: 'Email ja cadastrado' });
         return;
       }
@@ -391,6 +382,9 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/api/profile' && req.method === 'PUT') {
       const body = await readBody(req);
       state.profile = { ...state.profile, ...body };
+      if (typeof body.username === 'string' && body.username.trim()) {
+        state.user = state.user ? { ...state.user, username: body.username.trim().toLowerCase() } : state.user;
+      }
       saveState();
       sendJson(res, 200, state.profile);
       return;
@@ -428,6 +422,7 @@ const server = createServer(async (req, res) => {
         time: 'agora',
         text,
         tag: body.tag || 'post',
+        imageUrl: body.imageUrl || 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=900&q=80',
         likes: 0,
         replies: 0,
         reposts: 0,
