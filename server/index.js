@@ -26,80 +26,7 @@ const initialState = {
     bannerUrl: '',
     avatarUrl: '',
   },
-  partners: [
-    {
-      id: 'p1',
-      name: 'Lucas Ferreira',
-      position: 'Armador',
-      level: 'Intermediario',
-      availability: 'Noites durante a semana',
-      description: 'Bom passe, gosta de 3x3 e organiza bem jogos de meia quadra.',
-      city: 'Mallet-PR',
-      neighborhood: 'Centro',
-      matchScore: 96,
-      rating: 4.8,
-    },
-    {
-      id: 'p2',
-      name: 'Bruna Costa',
-      position: 'Ala',
-      level: 'Avancado',
-      availability: 'Tercas e quintas',
-      description: 'Atleta rapida, otima defesa no perimetro e transicao muito forte.',
-      city: 'Curitiba-PR',
-      neighborhood: 'Agua Verde',
-      matchScore: 91,
-      rating: 4.9,
-    },
-    {
-      id: 'p3',
-      name: 'Rafael Nascimento',
-      position: 'Pivo',
-      level: 'Iniciante',
-      availability: 'Fim de semana tarde',
-      description: 'Forte no garrafao, bom reboteiro e procurando evoluir em pick-and-roll.',
-      city: 'Ponta Grossa-PR',
-      neighborhood: 'Centro',
-      matchScore: 82,
-      rating: 4.5,
-    },
-    {
-      id: 'p4',
-      name: 'Marina Alves',
-      position: 'Ala',
-      level: 'Intermediario',
-      availability: 'Sabados de manha',
-      description: 'Arremesso consistente do canto, comunicativa na defesa e pontual nos treinos.',
-      city: 'Florianopolis-SC',
-      neighborhood: 'Trindade',
-      matchScore: 82,
-      rating: 4.7,
-    },
-    {
-      id: 'p5',
-      name: 'Diego Martins',
-      position: 'Armador',
-      level: 'Avancado',
-      availability: 'Domingos pela manha',
-      description: 'Leitura de jogo acima da media, bom controle de bola e gosta de jogos 3x3.',
-      city: 'Belo Horizonte-MG',
-      neighborhood: 'Savassi',
-      matchScore: 78,
-      rating: 4.6,
-    },
-    {
-      id: 'p6',
-      name: 'Ana Souza',
-      position: 'Pivo',
-      level: 'Intermediario',
-      availability: 'Quartas a noite',
-      description: 'Boa presenca no garrafao, protege o aro e chama treino coletivo.',
-      city: 'Recife-PE',
-      neighborhood: 'Boa Viagem',
-      matchScore: 75,
-      rating: 4.6,
-    },
-  ],
+  partners: [],
   courts: [
     {
       id: 'c1',
@@ -146,53 +73,7 @@ const initialState = {
       occupancy: 'Baixa',
     },
   ],
-  posts: [
-    {
-      id: 's1',
-      author: 'Lucas Ferreira',
-      handle: '@lucas.mallet',
-      role: 'Armador',
-      city: 'Mallet-PR',
-      time: '12 min',
-      text: 'Alguem de Mallet fecha 3x3 hoje a noite no Centro? Da para montar um rachao se aparecer mais dois.',
-      tag: 'MalletPR',
-      likes: 18,
-      replies: 6,
-      reposts: 3,
-      liked: false,
-      reposted: false,
-    },
-    {
-      id: 's2',
-      author: 'Bruna Costa',
-      handle: '@brunacrossover',
-      role: 'Ala',
-      city: 'Curitiba-PR',
-      time: '28 min',
-      text: 'Treino bom hoje: 100 lances livres, 40 pull-ups e 20 minutos de drible fraco. Quem estiver em Curitiba cola junto.',
-      tag: 'TreinoLivre',
-      likes: 31,
-      replies: 9,
-      reposts: 7,
-      liked: false,
-      reposted: false,
-    },
-    {
-      id: 's3',
-      author: 'Rafael Nascimento',
-      handle: '@rafa.rebote',
-      role: 'Pivo',
-      city: 'Ponta Grossa-PR',
-      time: '1 h',
-      text: 'Quadra no Centro esta tranquila agora. Se alguem quiser trabalhar garrafao e rebote, estou indo.',
-      tag: 'QuadraVazia',
-      likes: 12,
-      replies: 4,
-      reposts: 2,
-      liked: false,
-      reposted: false,
-    },
-  ],
+  posts: [],
 };
 
 function loadState() {
@@ -218,16 +99,12 @@ state.profile = {
 };
 saveState();
 
-if (!state.partners?.some((partner) => partner.city === 'Mallet-PR')) {
-  state = {
-    ...state,
-    profile: { ...initialState.profile, ...state.profile },
-    partners: initialState.partners,
-    courts: initialState.courts,
-    posts: initialState.posts,
-  };
-  saveState();
-}
+const seededPartnerIds = new Set(['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+const seededPostIds = new Set(['s1', 's2', 's3']);
+state.partners = (state.partners || []).filter((partner) => !seededPartnerIds.has(partner.id));
+state.posts = (state.posts || []).filter((post) => !seededPostIds.has(post.id));
+state.courts = Array.isArray(state.courts) && state.courts.length ? state.courts : initialState.courts;
+saveState();
 
 function saveState() {
   writeFileSync(stateFile, JSON.stringify(state, null, 2));
@@ -467,6 +344,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`Hoopers API running on http://127.0.0.1:${port}`);
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Hoopers API running on http://0.0.0.0:${port}`);
 });

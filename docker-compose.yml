@@ -1,0 +1,15 @@
+services:
+  hoopers-radar:
+    build: .
+    container_name: hoopers-radar
+    restart: unless-stopped
+    ports:
+      - "80:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    volumes:
+      - hoopers-data:/app/server/data
+
+volumes:
+  hoopers-data:

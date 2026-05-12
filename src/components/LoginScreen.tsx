@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
+import BrandLogo from './BrandLogo';
 import Icon from './Icon';
 import type { PlayerProfile } from '../types';
 
@@ -24,7 +25,7 @@ function getAge(year: string, month: string, day: string) {
 }
 
 function LoginScreen({ onLogin, onRegister }: Props) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'welcome' | 'login' | 'register'>('welcome');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -103,7 +104,7 @@ function LoginScreen({ onLogin, onRegister }: Props) {
   };
 
   const toggleMode = () => {
-    setMode((current) => (current === 'login' ? 'register' : 'login'));
+    setMode((current) => (current === 'register' ? 'login' : 'register'));
     setError('');
   };
 
@@ -115,63 +116,87 @@ function LoginScreen({ onLogin, onRegister }: Props) {
         </button>
 
         <div className="meta-lockup">
-          <Icon name="chat" />
-          <span>Hoopers</span>
+          <BrandLogo status="Conecte. Compita. Evolua." />
         </div>
 
         <div className="auth-heading">
-          <h1>{mode === 'register' ? 'Comece a usar o Hoopers' : 'Bem-vindo ao Hoopers'}</h1>
+          <h1>
+            {mode === 'register'
+              ? 'Crie sua conta'
+              : mode === 'login'
+                ? 'Entre no Radar'
+                : 'Bem-vindo ao Hoopers Radar'}
+          </h1>
           <p>
             {mode === 'register'
               ? 'Crie sua conta para conectar com atletas e encontrar rachoes.'
-              : 'Entre com sua conta para acessar a comunidade de basquete.'}
+              : mode === 'login'
+                ? 'Acesse sua comunidade, seus jogos e seus highlights.'
+                : 'A rede social feita para quem vive o basquete.'}
           </p>
         </div>
 
-        <label className="login-field">
-          <span>Numero de celular ou email</span>
-          <input
-            id="login-email"
-            name="username"
-            type="text"
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              setError('');
-            }}
-            placeholder="Numero de celular ou email"
-            autoComplete="username"
-          />
-        </label>
+        {mode === 'welcome' ? (
+          <div className="welcome-actions">
+            <button type="button" className="login-button" onClick={() => setMode('register')}>
+              Criar conta
+            </button>
+            <button type="button" className="login-button secondary" onClick={() => setMode('login')}>
+              Entrar
+            </button>
+            <button type="button" className="google-login" onClick={() => setMode('login')}>
+              <span>Continuar com Google</span>
+              <b aria-hidden="true">G</b>
+            </button>
+          </div>
+        ) : (
+          <>
+            <label className="login-field">
+              <span>Numero de celular ou email</span>
+              <input
+                id="login-email"
+                name="username"
+                type="text"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError('');
+                }}
+                placeholder="Numero de celular ou email"
+                autoComplete="username"
+              />
+            </label>
 
-        <label className="login-field">
-          <span>Senha</span>
-          {mode === 'login' ? (
-            <input
-              name="password"
-              type="password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setError('');
-              }}
-              placeholder="Senha"
-              autoComplete="current-password"
-            />
-          ) : (
-            <input
-              name="password"
-              type="password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setError('');
-              }}
-              placeholder="Senha"
-              autoComplete="new-password"
-            />
-          )}
-        </label>
+            <label className="login-field">
+              <span>Senha</span>
+              {mode === 'login' ? (
+                <input
+                  name="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError('');
+                  }}
+                  placeholder="Senha"
+                  autoComplete="current-password"
+                />
+              ) : (
+                <input
+                  name="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError('');
+                  }}
+                  placeholder="Senha"
+                  autoComplete="new-password"
+                />
+              )}
+            </label>
+          </>
+        )}
 
         {mode === 'register' && (
           <>
@@ -315,18 +340,22 @@ function LoginScreen({ onLogin, onRegister }: Props) {
           </>
         )}
 
-        {error && <p className="login-error">{error}</p>}
+        {mode !== 'welcome' && error && <p className="login-error">{error}</p>}
 
-        <button type="submit" className="login-button" disabled={isSubmitting}>
-          {isSubmitting ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Cadastrar'}
-        </button>
-
-        <p className="login-switch">
-          {mode === 'login' ? 'Nao tem uma conta?' : 'Ja tem uma conta?'}
-          <button type="button" onClick={toggleMode}>
-            {mode === 'login' ? 'Cadastre-se aqui' : 'Entrar aqui'}
+        {mode !== 'welcome' && (
+          <button type="submit" className="login-button" disabled={isSubmitting}>
+            {isSubmitting ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
           </button>
-        </p>
+        )}
+
+        {mode !== 'welcome' && (
+          <p className="login-switch">
+            {mode === 'login' ? 'Nao tem uma conta?' : 'Ja tem uma conta?'}
+            <button type="button" onClick={toggleMode}>
+              {mode === 'login' ? 'Cadastre-se aqui' : 'Entrar aqui'}
+            </button>
+          </p>
+        )}
       </form>
     </main>
   );

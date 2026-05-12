@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
 import Icon from './Icon';
 import type { PlayerProfile, SocialPost } from '../types';
 
 type Props = {
   profile: PlayerProfile;
   posts: SocialPost[];
-  onCreatePost: (text: string) => void;
+  onCreatePost: (text: string, imageUrl?: string) => void;
   onTogglePost: (id: string, action: 'like' | 'repost') => void;
   onSelectTag: (tag: string) => void;
   selectedTag: string;
   onClearTag: () => void;
   onCommentPost: (id: string) => void;
+  onSavePost: (id: string) => void;
+  onSharePost: (id: string) => void;
+  savedPostIds: string[];
 };
 
 function getInitials(name: string) {
@@ -21,47 +23,26 @@ function getInitials(name: string) {
     .join('');
 }
 
-function SocialFeed({ profile, posts, onCreatePost, onTogglePost, onSelectTag, selectedTag, onClearTag, onCommentPost }: Props) {
-  const [draft, setDraft] = useState('');
-
-  const authorName = profile.name.trim() || 'Voce';
-  const canPost = draft.trim().length > 0;
-
-  const trendingTags = useMemo(() => ['#MalletPR', '#BrasilHoopers', '#TreinoLivre'], []);
-
-  const publish = () => {
-    if (!canPost) return;
-    onCreatePost(draft.trim());
-    setDraft('');
-  };
+function SocialFeed({
+  profile,
+  posts,
+  onCreatePost,
+  onTogglePost,
+  onSelectTag,
+  selectedTag,
+  onClearTag,
+  onCommentPost,
+  onSavePost,
+  onSharePost,
+  savedPostIds,
+}: Props) {
+  void profile;
+  void onCreatePost;
+  void onSelectTag;
+  void onClearTag;
 
   return (
     <section className="social-feed">
-      <article className="composer-card">
-        <div className="social-avatar">{getInitials(authorName)}</div>
-        <div className="composer-body">
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="O que aconteceu no seu treino hoje?"
-            maxLength={180}
-          />
-          <div className="composer-footer">
-            <span>{180 - draft.length} caracteres</span>
-            <button type="button" disabled={!canPost} onClick={publish}>
-              <Icon name="send" />
-              Postar
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <div className="trend-row" aria-label="Assuntos em alta">
-        {trendingTags.map((tag) => (
-          <button key={tag} type="button" onClick={() => onSelectTag(tag)}>{tag}</button>
-        ))}
-      </div>
-
       {selectedTag && (
         <div className="active-filter">
           <span>Filtrando por #{selectedTag}</span>
@@ -91,6 +72,7 @@ function SocialFeed({ profile, posts, onCreatePost, onTogglePost, onSelectTag, s
               {post.imageUrl && (
                 <div className="post-image">
                   <img src={post.imageUrl} alt={`Imagem do post de ${post.author}`} />
+                  <span className="post-play-badge"><Icon name="plus" /></span>
                 </div>
               )}
 
@@ -105,6 +87,9 @@ function SocialFeed({ profile, posts, onCreatePost, onTogglePost, onSelectTag, s
                 <button type="button" onClick={() => onCommentPost(post.id)} aria-label="Responder">
                   <Icon name="chat" />
                   {post.replies}
+                </button>
+                <button type="button" onClick={() => onSharePost(post.id)} aria-label="Enviar">
+                  <Icon name="send" />
                 </button>
                 <button
                   type="button"
@@ -123,6 +108,14 @@ function SocialFeed({ profile, posts, onCreatePost, onTogglePost, onSelectTag, s
                 >
                   <Icon name="heart" />
                   {post.likes}
+                </button>
+                <button
+                  type="button"
+                  className={savedPostIds.includes(post.id) ? 'active saved' : ''}
+                  onClick={() => onSavePost(post.id)}
+                  aria-label={savedPostIds.includes(post.id) ? 'Remover salvo' : 'Salvar'}
+                >
+                  <Icon name="bookmark" />
                 </button>
               </div>
             </div>

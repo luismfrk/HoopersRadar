@@ -1,12 +1,16 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { api } from './api';
+import BrandLogo from './components/BrandLogo';
 import Icon from './components/Icon';
 import LoginScreen from './components/LoginScreen';
 import SocialFeed from './components/SocialFeed';
-import { mockCourts, mockPartners, mockPosts, mockStories } from './data/mockData';
+import { mockCourts } from './data/mockData';
 import { Court, Partner, PlayerProfile, SocialPost, Story } from './types';
 
 type View = 'feed' | 'explore' | 'runs' | 'direct' | 'notifications' | 'profile';
+type GameDateFilter = 'today' | 'tomorrow' | 'all';
+type GameTimeFilter = 'any' | 'morning' | 'afternoon' | 'night';
+type GameLocationFilter = 'profile' | 'all';
 type DirectMessage = {
   id: string;
   from: 'me' | 'them';
@@ -44,6 +48,14 @@ type AppNotification = {
   actor?: string;
 };
 
+type PostComment = {
+  id: string;
+  author: string;
+  handle: string;
+  text: string;
+  time: string;
+};
+
 const positions = ['Armador', 'Ala', 'Pivo'];
 const levels = ['Iniciante', 'Intermediario', 'Avancado'];
 const postThumbs = [
@@ -55,92 +67,11 @@ const postThumbs = [
   'https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?auto=format&fit=crop&w=500&q=80',
 ];
 
-const directSeed: DirectThread[] = [
-  {
-    id: 'dm-taigo',
-    name: 'Taigo Alves',
-    handle: '@agrotaigo',
-    city: 'Curitiba-PR',
-    online: true,
-    messages: [
-      { id: 'm1', from: 'them', text: 'Vai ter treino livre hoje as 20h?', time: '12:40' },
-      { id: 'm2', from: 'me', text: 'Se fechar mais dois, eu colo.', time: '12:42' },
-    ],
-  },
-  {
-    id: 'dm-lucas',
-    name: 'Lucas Rocha',
-    handle: '@lucasrocha',
-    city: 'Mallet-PR',
-    online: true,
-    messages: [
-      { id: 'm3', from: 'them', text: 'Centro ta livre hoje. Bora montar 3x3?', time: '09:18' },
-      { id: 'm4', from: 'me', text: 'Bora. Vou chamar a galera no feed.', time: '09:21' },
-    ],
-  },
-  {
-    id: 'dm-ana',
-    name: 'Ana Martins',
-    handle: '@anamartins',
-    city: 'Ponta Grossa-PR',
-    online: false,
-    messages: [
-      { id: 'm5', from: 'them', text: 'Manda aquele exercicio de arremesso depois.', time: 'ontem' },
-    ],
-  },
-];
+const directSeed: DirectThread[] = [];
 
-const runSeed: PickupRun[] = [
-  {
-    id: 'run-mallet-night',
-    courtId: 'c1',
-    title: '3x3 no Centro',
-    time: 'Hoje, 20:00',
-    players: 'Faltam 2',
-    notes: 'Nivel intermediario, so chegar com bola se tiver.',
-    host: 'Lucas Ferreira',
-    going: ['Lucas Ferreira', 'Rafael Nascimento'],
-  },
-  {
-    id: 'run-curitiba-free',
-    courtId: 'c2',
-    title: 'Treino livre + meia quadra',
-    time: 'Amanha, 18:30',
-    players: 'Aberto',
-    notes: 'Comeca com arremesso e fecha jogo depois.',
-    host: 'Bruna Costa',
-    going: ['Bruna Costa'],
-  },
-];
+const runSeed: PickupRun[] = [];
 
-const notificationSeed: AppNotification[] = [
-  {
-    id: 'nt-lucas-follow',
-    kind: 'follow',
-    title: 'Novo seguidor',
-    text: 'Lucas Ferreira comecou a seguir voce.',
-    time: 'agora',
-    read: false,
-    actor: 'Lucas Ferreira',
-  },
-  {
-    id: 'nt-run',
-    kind: 'run',
-    title: 'Rachao perto de voce',
-    text: 'Tem 3x3 marcado hoje na Quadra Municipal de Mallet.',
-    time: '12 min',
-    read: false,
-  },
-  {
-    id: 'nt-story',
-    kind: 'story',
-    title: 'Story em destaque',
-    text: 'Bruna Costa postou um treino livre para hoje.',
-    time: '1 h',
-    read: true,
-    actor: 'Bruna Costa',
-  },
-];
+const notificationSeed: AppNotification[] = [];
 
 const initialProfile: PlayerProfile = {
   name: '',
@@ -160,8 +91,8 @@ const initialProfile: PlayerProfile = {
 
 const viewCopy: Record<View, { eyebrow: string; title: string }> = {
   feed: {
-    eyebrow: 'Timeline',
-    title: 'Hoopers',
+    eyebrow: 'Conecte. Compita. Evolua.',
+    title: 'Hoopers Radar',
   },
   explore: {
     eyebrow: 'Descobrir',
@@ -204,10 +135,10 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeView, setActiveView] = useState<View>('feed');
   const [profile, setProfile] = useState<PlayerProfile>(initialProfile);
-  const [hoopers, setHoopers] = useState<Partner[]>(mockPartners);
+  const [hoopers, setHoopers] = useState<Partner[]>([]);
   const [courts, setCourts] = useState<Court[]>(mockCourts);
-  const [posts, setPosts] = useState<SocialPost[]>(mockPosts);
-  const [stories, setStories] = useState<Story[]>(mockStories);
+  const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [stories] = useState<Story[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [storyReply, setStoryReply] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
@@ -215,7 +146,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [feedTab, setFeedTab] = useState<'forYou' | 'following' | 'nearby'>('forYou');
   const [following, setFollowing] = useState<string[]>([]);
-  const [followers, setFollowers] = useState<string[]>(['Lucas Ferreira', 'Bruna Costa']);
+  const [followers, setFollowers] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(notificationSeed);
   const [storyLikes, setStoryLikes] = useState<string[]>([]);
   const [joinedRuns, setJoinedRuns] = useState<string[]>([]);
@@ -234,13 +165,28 @@ function App() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [profileTab, setProfileTab] = useState<'posts' | 'tagged'>('posts');
+  const [selectedCommentPostId, setSelectedCommentPostId] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [postComments, setPostComments] = useState<Record<string, PostComment[]>>({});
+  const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [composerText, setComposerText] = useState('');
+  const [composerImageUrl, setComposerImageUrl] = useState('');
+  const [profileTab, setProfileTab] = useState<'posts' | 'reels' | 'saved' | 'tagged'>('posts');
   const [directThreads, setDirectThreads] = useState<DirectThread[]>(directSeed);
-  const [selectedDirectId, setSelectedDirectId] = useState(directSeed[0].id);
+  const [selectedDirectId, setSelectedDirectId] = useState(directSeed[0]?.id || '');
   const [directDraft, setDirectDraft] = useState('');
   const [directSearch, setDirectSearch] = useState('');
   const [storyMuted, setStoryMuted] = useState(false);
   const [storyPaused, setStoryPaused] = useState(false);
+  const [rankingTab, setRankingTab] = useState<'geral' | 'regional' | 'seguindo' | 'amigos'>('geral');
+  const [gamesTab, setGamesTab] = useState<'upcoming' | 'mine' | 'saved'>('upcoming');
+  const [savedRunIds, setSavedRunIds] = useState<string[]>([]);
+  const [isRunFormOpen, setIsRunFormOpen] = useState(false);
+  const [gameDateFilter, setGameDateFilter] = useState<GameDateFilter>('today');
+  const [gameTimeFilter, setGameTimeFilter] = useState<GameTimeFilter>('any');
+  const [gameLocationFilter, setGameLocationFilter] = useState<GameLocationFilter>('profile');
+  const [gameCourtFilter, setGameCourtFilter] = useState('');
 
   const screen = viewCopy[activeView];
   const profileHandle = profile.username || (profile.name || 'hooper').toLowerCase().replace(/\s+/g, '.');
@@ -267,7 +213,7 @@ function App() {
       return filteredPosts.filter((post) => post.city === profile.city);
     }
 
-    if (feedTab === 'following' && following.length) {
+    if (feedTab === 'following') {
       return filteredPosts.filter((post) => following.includes(post.author));
     }
 
@@ -278,9 +224,19 @@ function App() {
     return hoopers.filter((hooper) => !following.includes(hooper.name)).slice(0, 3);
   }, [following, hoopers]);
 
-  const profilePosts = useMemo(() => posts.slice(0, 9), [posts]);
+  const profilePosts = useMemo(
+    () =>
+      posts
+        .filter((post) => post.author === profile.name || post.handle === `@${profileHandle}`)
+        .slice(0, 9),
+    [posts, profile.name, profileHandle],
+  );
+  const savedProfilePosts = useMemo(() => posts.filter((post) => savedPostIds.includes(post.id)).slice(0, 9), [posts, savedPostIds]);
+  const visibleProfileGridPosts = profileTab === 'saved' ? savedProfilePosts : profilePosts;
   const selectedProfilePost = profilePosts.find((post) => post.id === selectedPostId);
   const selectedProfilePostIndex = selectedProfilePost ? profilePosts.findIndex((post) => post.id === selectedProfilePost.id) : 0;
+  const selectedCommentPost = selectedCommentPostId ? posts.find((post) => post.id === selectedCommentPostId) : null;
+  const selectedComments = selectedCommentPostId ? postComments[selectedCommentPostId] || [] : [];
   const selectedStory = selectedStoryId ? stories.find((story) => story.id === selectedStoryId) : null;
   const selectedStoryIndex = selectedStory ? Math.max(stories.findIndex((story) => story.id === selectedStory.id), 0) : 0;
   const selectedCourt = selectedCourtId ? courts.find((court) => court.id === selectedCourtId) : null;
@@ -296,6 +252,80 @@ function App() {
     );
   }, [directSearch, directThreads]);
   const selectedDirectThread = directThreads.find((thread) => thread.id === selectedDirectId) || directThreads[0];
+  const profileRunCount = pickupRuns.filter((run) => run.host === (profile.name.trim() || 'Voce')).length;
+  const activityPoints = profilePosts.length * 80 + joinedRuns.length * 120 + profileRunCount * 160 + savedPostIds.length * 20;
+  const currentRank = activityPoints >= 2000 ? 'All-Star' : activityPoints >= 1000 ? 'Starter' : activityPoints >= 400 ? 'Sixth Man' : 'Rookie';
+  const nextRank = activityPoints >= 2000 ? 'MVP' : activityPoints >= 1000 ? 'All-Star' : activityPoints >= 400 ? 'Starter' : 'Sixth Man';
+  const nextRankPoints = activityPoints >= 2000 ? 3200 : activityPoints >= 1000 ? 2000 : activityPoints >= 400 ? 1000 : 400;
+  const rankProgress = Math.min(100, Math.round((activityPoints / nextRankPoints) * 100));
+  const runMatchesDate = (run: PickupRun) => {
+    const normalized = run.time.toLowerCase();
+    if (gameDateFilter === 'today') return normalized.includes('hoje');
+    if (gameDateFilter === 'tomorrow') return normalized.includes('amanha') || normalized.includes('amanhã');
+    return true;
+  };
+  const runMatchesTime = (run: PickupRun) => {
+    if (gameTimeFilter === 'any') return true;
+    const hourMatch = run.time.match(/(\d{1,2})(?::\d{2})?/);
+    if (!hourMatch) return true;
+    const hour = Number(hourMatch[1]);
+    if (gameTimeFilter === 'morning') return hour >= 5 && hour < 12;
+    if (gameTimeFilter === 'afternoon') return hour >= 12 && hour < 18;
+    return hour >= 18 || hour < 5;
+  };
+  const visibleRuns = useMemo(() => {
+    const playerName = profile.name.trim() || 'Voce';
+    const term = search.trim().toLowerCase();
+
+    return pickupRuns.filter((run) => {
+      const court = courts.find((item) => item.id === run.courtId);
+      const isMine = run.host === playerName || run.going.includes(playerName);
+      const isSaved = savedRunIds.includes(run.id);
+      const tabMatch = gamesTab === 'mine' ? isMine : gamesTab === 'saved' ? isSaved : true;
+      const dateMatch = runMatchesDate(run);
+      const timeMatch = runMatchesTime(run);
+      const courtMatch = gameCourtFilter ? run.courtId === gameCourtFilter : true;
+      const locationMatch =
+        gameLocationFilter === 'all' ? true : (court?.address || '').toLowerCase().includes((profile.city || '').toLowerCase());
+      const searchMatch = term
+        ? `${run.title} ${run.time} ${run.players} ${run.notes} ${run.host} ${court?.name || ''} ${court?.address || ''}`
+            .toLowerCase()
+            .includes(term)
+        : true;
+
+      return tabMatch && dateMatch && timeMatch && courtMatch && locationMatch && searchMatch;
+    });
+  }, [courts, gameCourtFilter, gameDateFilter, gameLocationFilter, gameTimeFilter, gamesTab, pickupRuns, profile.city, profile.name, savedRunIds, search]);
+  const gameDateLabel = gameDateFilter === 'today' ? 'Hoje' : gameDateFilter === 'tomorrow' ? 'Amanha' : 'Todos';
+  const gameTimeLabel =
+    gameTimeFilter === 'any' ? 'Qualquer' : gameTimeFilter === 'morning' ? 'Manha' : gameTimeFilter === 'afternoon' ? 'Tarde' : 'Noite';
+  const gameLocationLabel = gameLocationFilter === 'profile' ? profile.city || 'Minha cidade' : 'Todos';
+  const gameCourtLabel = gameCourtFilter ? courts.find((court) => court.id === gameCourtFilter)?.name || 'Quadra' : `${courts.length}`;
+  const hasGameFilters =
+    gameDateFilter !== 'all' || gameTimeFilter !== 'any' || gameLocationFilter !== 'all' || Boolean(gameCourtFilter) || Boolean(search.trim());
+
+  const cycleGameDateFilter = () => {
+    setGameDateFilter((current) => (current === 'today' ? 'tomorrow' : current === 'tomorrow' ? 'all' : 'today'));
+  };
+
+  const cycleGameTimeFilter = () => {
+    setGameTimeFilter((current) =>
+      current === 'any' ? 'morning' : current === 'morning' ? 'afternoon' : current === 'afternoon' ? 'night' : 'any',
+    );
+  };
+
+  const cycleGameLocationFilter = () => {
+    setGameLocationFilter((current) => (current === 'profile' ? 'all' : 'profile'));
+  };
+
+  const cycleGameCourtFilter = () => {
+    setGameCourtFilter((current) => {
+      if (!courts.length) return '';
+      if (!current) return courts[0].id;
+      const index = courts.findIndex((court) => court.id === current);
+      return index >= 0 && index < courts.length - 1 ? courts[index + 1].id : '';
+    });
+  };
 
   const pushNotification = (notification: Omit<AppNotification, 'id' | 'time' | 'read'>) => {
     setNotifications((current) => [
@@ -346,7 +376,7 @@ function App() {
     }
   };
 
-  const handleCreatePost = async (text: string) => {
+  const handleCreatePost = async (text: string, imageUrl?: string) => {
     const tagMatch = text.match(/#(\w+)/);
     const postTag = tagMatch ? tagMatch[1] : 'Basquete';
     const fallbackPost: SocialPost = {
@@ -358,7 +388,7 @@ function App() {
       time: 'agora',
       text,
       tag: postTag,
-      imageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=900&q=80',
+      imageUrl: imageUrl || 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=900&q=80',
       likes: 0,
       replies: 0,
       reposts: 0,
@@ -401,6 +431,7 @@ function App() {
   const openComposer = () => {
     setActiveView('feed');
     setSelectedTag('');
+    setIsComposerOpen(true);
   };
 
   const openDirect = (threadId?: string) => {
@@ -427,14 +458,111 @@ function App() {
     }
   };
 
+  const handleShareRanking = async () => {
+    const text = `Meu ranking no Hoopers Radar: @${profileHandle}, ${currentRank}, ${activityPoints.toLocaleString('pt-BR')} pts.`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Ranking Hoopers Radar', text });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
+      pushNotification({
+        kind: 'system',
+        title: 'Ranking compartilhado',
+        text: 'O resumo do seu ranking foi preparado para envio.',
+      });
+    } catch {
+      // Sharing can be cancelled by the user.
+    }
+  };
+
   const handleCommentPost = (id: string) => {
-    setPosts((current) => current.map((post) => (post.id === id ? { ...post, replies: post.replies + 1 } : post)));
-    const post = posts.find((item) => item.id === id);
+    setSelectedCommentPostId(id);
+    setCommentDraft('');
+  };
+
+  const handleSubmitComment = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedCommentPostId || !commentDraft.trim()) return;
+
+    const comment: PostComment = {
+      id: `comment-${Date.now()}`,
+      author: profile.name.trim() || 'Voce',
+      handle: profile.username ? `@${profile.username}` : '@meu.hoops',
+      text: commentDraft.trim(),
+      time: 'agora',
+    };
+
+    setPostComments((current) => ({
+      ...current,
+      [selectedCommentPostId]: [...(current[selectedCommentPostId] || []), comment],
+    }));
+    setPosts((current) =>
+      current.map((post) => (post.id === selectedCommentPostId ? { ...post, replies: post.replies + 1 } : post)),
+    );
+    setCommentDraft('');
+
+    const post = posts.find((item) => item.id === selectedCommentPostId);
     pushNotification({
       kind: 'post',
       title: 'Comentario registrado',
-      text: post ? `Voce entrou na conversa do post de ${post.author}.` : 'Voce entrou na conversa de um post.',
+      text: post ? `Voce comentou no post de ${post.author}.` : 'Voce comentou em um post.',
     });
+  };
+
+  const handleSavePost = (id: string) => {
+    const isSaved = savedPostIds.includes(id);
+    setSavedPostIds((current) => (isSaved ? current.filter((item) => item !== id) : [...current, id]));
+    const post = posts.find((item) => item.id === id);
+    pushNotification({
+      kind: 'post',
+      title: isSaved ? 'Post removido dos salvos' : 'Post salvo',
+      text: post ? `${post.author}: ${post.text.slice(0, 54)}` : 'Sua colecao foi atualizada.',
+    });
+  };
+
+  const handleSharePost = async (id: string) => {
+    const post = posts.find((item) => item.id === id);
+    if (!post) return;
+
+    const text = `${post.author} no Hoopers Radar: ${post.text}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Hoopers Radar', text });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
+      pushNotification({
+        kind: 'post',
+        title: 'Post pronto para compartilhar',
+        text: 'O conteudo foi enviado para o compartilhamento do dispositivo.',
+      });
+    } catch {
+      // Sharing can be cancelled by the user.
+    }
+  };
+
+  const handleSaveRun = (runId: string) => {
+    const run = pickupRuns.find((item) => item.id === runId);
+    const isSaved = savedRunIds.includes(runId);
+    setSavedRunIds((current) => (isSaved ? current.filter((id) => id !== runId) : [...current, runId]));
+    if (run) {
+      pushNotification({
+        kind: 'run',
+        title: isSaved ? 'Jogo removido dos favoritos' : 'Jogo salvo',
+        text: `${run.title} ${isSaved ? 'saiu dos favoritos.' : 'foi guardado nos favoritos.'}`,
+      });
+    }
+  };
+
+  const handleSubmitComposer = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!composerText.trim()) return;
+
+    await handleCreatePost(composerText.trim(), composerImageUrl.trim() || undefined);
+    setComposerText('');
+    setComposerImageUrl('');
+    setIsComposerOpen(false);
   };
 
   const handleToggleFollow = (hooper: Partner) => {
@@ -566,6 +694,25 @@ function App() {
     });
   };
 
+  const handleShareStory = async (story: Story) => {
+    const text = `${story.author} no Hoopers Radar: ${story.caption}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Story Hoopers Radar', text });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
+      pushNotification({
+        kind: 'story',
+        title: 'Story pronto para compartilhar',
+        text: 'O conteudo foi enviado para o compartilhamento do dispositivo.',
+        actor: story.author,
+      });
+    } catch {
+      // Sharing can be cancelled by the user.
+    }
+  };
+
   const openCourtDetail = (courtId: string) => {
     const court = courts.find((item) => item.id === courtId);
     const wasJoined = joinedRuns.includes(courtId);
@@ -631,6 +778,8 @@ function App() {
     setJoinedRuns((current) => (current.includes(runDraft.courtId) ? current : [...current, runDraft.courtId]));
     setRunDraft({ courtId: runDraft.courtId, title: '', time: '', players: '', notes: '' });
     setRunFormError('');
+    setGamesTab('upcoming');
+    setIsRunFormOpen(false);
     pushNotification({
       kind: 'run',
       title: 'Rachao publicado',
@@ -729,18 +878,29 @@ function App() {
 
   return (
     <div className="mobile-app social-app">
+      <div className="phone-status" aria-hidden="true">
+        <span>9:41</span>
+        <span className="phone-indicators">
+          <i />
+          <i />
+          <i />
+        </span>
+      </div>
+      {activeView !== 'profile' && activeView !== 'runs' && activeView !== 'explore' && (
       <header className="app-header">
         <button className="brand-lockup" type="button" onClick={() => setActiveView('feed')} aria-label="Ir para o feed">
-          <span className="brand-mark" aria-hidden="true">
-            <Icon name="chat" />
-          </span>
-          <span>
-            <strong>Hoopers</strong>
-            <small>{apiStatus === 'online' ? 'ao vivo no Brasil' : 'modo local'}</small>
-          </span>
+          <BrandLogo compact status={apiStatus === 'online' ? 'ao vivo no Brasil' : 'modo local'} />
         </button>
 
         <div className="header-actions">
+          <button
+            type="button"
+            className="icon-action add-button"
+            aria-label="Criar post"
+            onClick={openComposer}
+          >
+            <Icon name="plus" />
+          </button>
           <button
             type="button"
             className="icon-action notification-button"
@@ -753,98 +913,42 @@ function App() {
             <Icon name="bell" />
             {unreadNotifications > 0 && <span>{unreadNotifications}</span>}
           </button>
-          <button type="button" className="icon-action" aria-label="Abrir direct" onClick={() => openDirect()}>
-            <Icon name="send" />
-          </button>
         </div>
       </header>
+      )}
 
       <main className="app-main">
-        {activeView !== 'profile' && (
+        {activeView !== 'profile' && activeView !== 'feed' && activeView !== 'runs' && activeView !== 'explore' && (
           <section className="screen-title social-title">
             <div>
               <p className="eyebrow">{screen.eyebrow}</p>
               <h1>{screen.title}</h1>
             </div>
             <span className="status-pill">
-              {activeView === 'explore'
-                ? `${filteredHoopers.length} hoopers`
-                : activeView === 'runs'
-                  ? `${courts.length} runs`
-                  : activeView === 'direct'
-                    ? `${directThreads.length} chats`
-                    : activeView === 'notifications'
-                      ? `${notifications.length} avisos`
-                      : 'ao vivo'}
+              {activeView === 'direct'
+                ? `${directThreads.length} chats`
+                : activeView === 'notifications'
+                  ? `${notifications.length} avisos`
+                  : 'ao vivo'}
             </span>
           </section>
         )}
 
         {activeView === 'feed' && (
           <section className="screen-stack">
-            <div className="feed-tabs" aria-label="Filtro da timeline">
-              <button
-                className={feedTab === 'forYou' ? 'active' : ''}
-                type="button"
-                onClick={() => setFeedTab('forYou')}
-              >
-                Pra voce
-              </button>
-              <button
-                className={feedTab === 'following' ? 'active' : ''}
-                type="button"
-                onClick={() => setFeedTab('following')}
-              >
-                Seguindo
-              </button>
-              <button
-                className={feedTab === 'nearby' ? 'active' : ''}
-                type="button"
-                onClick={() => setFeedTab('nearby')}
-              >
-                Perto
-              </button>
-            </div>
-
             <section className="story-rail" aria-label="Hoopers em destaque">
+              {stories.length === 0 && (
+                <button type="button" onClick={openComposer}>
+                  <span><Icon name="plus" /></span>
+                  <small>Novo post</small>
+                </button>
+              )}
               {stories.slice(0, 5).map((story) => (
                 <button key={story.id} type="button" onClick={() => openStory(story.id)}>
                   <span>{initials(story.author)}</span>
                   <small>{story.author.split(' ')[0]}</small>
                 </button>
               ))}
-            </section>
-
-            <article className="social-prompt">
-              <Icon name="court" />
-              <div>
-                <strong>O que ta rolando na quadra?</strong>
-                <p>Poste treino, desafio, chamada para rachao ou um highlight.</p>
-              </div>
-            </article>
-
-            <section className="suggestion-strip" aria-label="Sugestoes para seguir">
-              <div className="section-heading compact">
-                <div>
-                  <p className="eyebrow">Quem seguir</p>
-                  <h2>Hoopers em destaque</h2>
-                </div>
-              </div>
-              <div className="suggestion-row">
-                {suggestedHoopers.map((hooper) => (
-                  <article key={hooper.id} className="suggestion-card">
-                    <div className="social-avatar">{initials(hooper.name)}</div>
-                    <strong>{hooper.name.split(' ')[0]}</strong>
-                    <span>{hooper.city}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFollow(hooper)}
-                    >
-                      Seguir
-                    </button>
-                  </article>
-                ))}
-              </div>
             </section>
 
             <SocialFeed
@@ -856,6 +960,9 @@ function App() {
               selectedTag={selectedTag}
               onClearTag={clearSelectedTag}
               onCommentPost={handleCommentPost}
+              onSavePost={handleSavePost}
+              onSharePost={handleSharePost}
+              savedPostIds={savedPostIds}
             />
 
             {selectedStory && (
@@ -893,7 +1000,16 @@ function App() {
                     >
                       <Icon name="pause" />
                     </button>
-                    <button type="button" aria-label="Mais opcoes"><Icon name="more" /></button>
+                    <button
+                      type="button"
+                      aria-label="Compartilhar story"
+                      onClick={() => {
+                        setStoryPaused(true);
+                        handleShareStory(selectedStory);
+                      }}
+                    >
+                      <Icon name="more" />
+                    </button>
                     <button type="button" onClick={closeStory} aria-label="Fechar">x</button>
                   </header>
 
@@ -934,281 +1050,280 @@ function App() {
         )}
 
         {activeView === 'explore' && (
-          <section className="screen-stack">
-            <label className="side-input explore-search">
+          <section className="games-screen">
+            <header className="games-header">
+              <BrandLogo compact />
+              <h1>Encontrar <span>Jogos</span></h1>
+              <div>
+                <button type="button" aria-label="Filtros" onClick={() => setGamesTab('mine')}><Icon name="filter" /></button>
+                <button type="button" aria-label="Calendario" onClick={() => setGamesTab('upcoming')}><Icon name="calendar" /></button>
+              </div>
+            </header>
+
+            <label className="games-search">
               <Icon name="search" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar atleta, cidade ou posicao"
+                placeholder="Buscar jogos, quadras ou bairros..."
               />
             </label>
 
-            <div className="hooper-grid">
-              {filteredHoopers.map((hooper) => (
-                <article key={hooper.id} className="hooper-card">
-                  <div className="social-avatar">{initials(hooper.name)}</div>
-                  <div>
-                    <strong>{hooper.name}</strong>
-                    <span>{hooper.position} / {hooper.level}</span>
-                    <p>{hooper.neighborhood}, {hooper.city}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className={following.includes(hooper.name) ? 'following' : ''}
-                    onClick={() => handleToggleFollow(hooper)}
-                  >
-                    {following.includes(hooper.name) ? 'Seguindo' : 'Seguir'}
-                  </button>
-                </article>
+            <section className="games-tabs" aria-label="Tipo de lista">
+              <button type="button" className={gamesTab === 'upcoming' ? 'active' : ''} onClick={() => setGamesTab('upcoming')}>
+                <Icon name="calendar" /> Proximos
+              </button>
+              <button type="button" className={gamesTab === 'mine' ? 'active' : ''} onClick={() => setGamesTab('mine')}>
+                <Icon name="person" /> Meus jogos
+              </button>
+              <button type="button" className={gamesTab === 'saved' ? 'active' : ''} onClick={() => setGamesTab('saved')}>
+                <Icon name="star" /> Favoritos
+              </button>
+            </section>
+
+            <section className="games-filters" aria-label="Filtros de jogos">
+              {[
+                ['calendar', 'Data', gameDateLabel, cycleGameDateFilter, gameDateFilter !== 'all'],
+                ['time', 'Horario', gameTimeLabel, cycleGameTimeFilter, gameTimeFilter !== 'any'],
+                ['location', 'Local', gameLocationLabel, cycleGameLocationFilter, gameLocationFilter !== 'all'],
+                ['court', 'Quadras', gameCourtLabel, cycleGameCourtFilter, Boolean(gameCourtFilter)],
+              ].map(([icon, label, value, onClick, active]) => (
+                <button
+                  key={label as string}
+                  type="button"
+                  className={active ? 'active' : ''}
+                  onClick={onClick as () => void}
+                  title={`Alterar filtro: ${label}`}
+                >
+                  <Icon name={icon as 'calendar' | 'time' | 'location' | 'court'} />
+                  <span>{label as string}</span>
+                  <b>{value as string}</b>
+                  <Icon name="chevron" />
+                </button>
               ))}
+            </section>
+
+            {hasGameFilters && (
+              <button
+                type="button"
+                className="games-clear-filters"
+                onClick={() => {
+                  setGameDateFilter('all');
+                  setGameTimeFilter('any');
+                  setGameLocationFilter('all');
+                  setGameCourtFilter('');
+                  setSearch('');
+                }}
+              >
+                Limpar filtros
+              </button>
+            )}
+
+            <div className="games-section-head">
+              <h2>Jogos proximos</h2>
+              <span>{visibleRuns.length} jogos encontrados</span>
             </div>
+
+            <section className="games-list" aria-label="Jogos proximos">
+              {visibleRuns.length === 0 && (
+                <article className="empty-state">
+                  Nenhum jogo publicado ainda. Crie um rachao para ele aparecer aqui.
+                </article>
+              )}
+              {visibleRuns.map((game) => {
+                const court = courts.find((item) => item.id === game.courtId);
+                const playerName = profile.name.trim() || 'Voce';
+                const isGoing = game.going.includes(playerName);
+                const isSaved = savedRunIds.includes(game.id);
+
+                return (
+                <article key={game.id} className="game-card orange">
+                  <div className="game-image">
+                    <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=700&q=85" alt={game.title} />
+                    <span>{game.going.length}</span>
+                  </div>
+                  <div className="game-main">
+                    <small>{game.time}</small>
+                    <h3>{game.title}</h3>
+                    <p><Icon name="location" /> {court?.name || 'Quadra'}<br />{court?.address || profile.city}</p>
+                    <footer>
+                      <span><Icon name="person" /> {game.players}</span>
+                      <span><Icon name="grid" /> {game.notes}</span>
+                    </footer>
+                  </div>
+                  <aside className="game-side">
+                    <button
+                      type="button"
+                      className={isSaved ? 'following' : ''}
+                      onClick={() => handleSaveRun(game.id)}
+                      aria-label={isSaved ? 'Remover jogo salvo' : 'Salvar jogo'}
+                    >
+                      <Icon name="bookmark" />
+                    </button>
+                    <span>Organizador</span>
+                    <strong><span className="ranking-avatar">{initials(game.host)}</span>{game.host}</strong>
+                    <small>Confirmados</small>
+                    <b>{game.going.length}</b>
+                    <button type="button" className={isGoing ? 'following' : ''} onClick={() => toggleRunPresence(game.id)}>
+                      {isGoing ? 'Sair' : 'Entrar'}
+                    </button>
+                  </aside>
+                </article>
+                );
+              })}
+            </section>
+
+            <article className="create-game-card">
+              <Icon name="calendar" />
+              <div>
+                <strong>Organize seu jogo</strong>
+                <p>Crie seu jogo e chame a galera para entrar na quadra com voce.</p>
+              </div>
+              <button type="button" onClick={() => setIsRunFormOpen(true)}>Criar jogo <Icon name="chevron" /></button>
+            </article>
+
+            <article className="create-game-card">
+              <Icon name="court" />
+              <div>
+                <strong>Novo rachao</strong>
+                <p>Publique horario, quadra e vagas com dados seus, sem preencher a comunidade com perfis inventados.</p>
+              </div>
+              <button type="button" onClick={() => setIsRunFormOpen((current) => !current)}>
+                {isRunFormOpen ? 'Fechar' : 'Abrir formulario'} <Icon name="chevron" />
+              </button>
+            </article>
+
+            {isRunFormOpen && (
+              <form className="run-form" onSubmit={handleCreatePickupRun}>
+                <label className="field">
+                  <span>Quadra</span>
+                  <select value={runDraft.courtId} onChange={(event) => setRunDraft((current) => ({ ...current, courtId: event.target.value }))}>
+                    {courts.map((court) => (
+                      <option key={court.id} value={court.id}>{court.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Titulo</span>
+                  <input
+                    value={runDraft.title}
+                    onChange={(event) => setRunDraft((current) => ({ ...current, title: event.target.value }))}
+                    placeholder="3x3 no Centro"
+                  />
+                </label>
+                <label className="field">
+                  <span>Horario</span>
+                  <input
+                    value={runDraft.time}
+                    onChange={(event) => setRunDraft((current) => ({ ...current, time: event.target.value }))}
+                    placeholder="Hoje, 20:00"
+                  />
+                </label>
+                <label className="field">
+                  <span>Vagas</span>
+                  <input
+                    value={runDraft.players}
+                    onChange={(event) => setRunDraft((current) => ({ ...current, players: event.target.value }))}
+                    placeholder="Aberto, faltam 2..."
+                  />
+                </label>
+                <label className="field">
+                  <span>Notas</span>
+                  <textarea
+                    value={runDraft.notes}
+                    onChange={(event) => setRunDraft((current) => ({ ...current, notes: event.target.value }))}
+                    placeholder="Nivel, bola, regras da quadra..."
+                  />
+                </label>
+                {runFormError && <p className="Profile-edit-error">{runFormError}</p>}
+                <button type="submit">Publicar jogo</button>
+              </form>
+            )}
           </section>
         )}
 
         {activeView === 'runs' && (
-          <section className="screen-stack">
-            {selectedCourt ? (
-              <section className="court-detail-page">
-                <button type="button" className="back-row" onClick={() => setSelectedCourtId(null)}>
-                  <Icon name="chevron" />
-                  Voltar para rachoes
+          <section className="ranking-screen">
+            <header className="ranking-header">
+              <BrandLogo compact />
+              <h1>Ranking</h1>
+              <div>
+                <button type="button" aria-label="Informacoes" onClick={() => setActiveView('profile')}><Icon name="shield" /></button>
+                <button type="button" aria-label="Compartilhar ranking" onClick={handleShareRanking}><Icon name="send" /></button>
+              </div>
+            </header>
+
+            <section className="ranking-tabs" aria-label="Filtros do ranking">
+              {[
+                ['geral', 'Geral'],
+                ['regional', 'Regional'],
+                ['seguindo', 'Seguindo'],
+                ['amigos', 'Amigos'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={rankingTab === id ? 'active' : ''}
+                  onClick={() => setRankingTab(id as 'geral' | 'regional' | 'seguindo' | 'amigos')}
+                >
+                  {label}
                 </button>
+              ))}
+            </section>
 
-                <article className="court-map-card">
-                  <div className="court-detail-copy">
-                    <p className="eyebrow">{selectedCourt.status}</p>
-                    <h2>{selectedCourt.name}</h2>
-                    <p>{selectedCourt.address}</p>
-                  </div>
+            <section className="ranking-podium" aria-label="Top 3 do ranking">
+              <article className="podium-player first">
+                <span className="podium-crown">#</span>
+                <span className="podium-badge">1</span>
+                <span className="podium-avatar">{initials(profile.name || 'Hooper')}</span>
+                <strong>@{profileHandle}</strong>
+                <em>{currentRank}</em>
+                <b>{activityPoints.toLocaleString('pt-BR')} pts</b>
+              </article>
+            </section>
 
-                  <div className="court-map-frame">
-                    <iframe
-                      title={`Mapa de ${selectedCourt.name}`}
-                      src={`https://www.google.com/maps?q=${selectedCourt.lat},${selectedCourt.lng}&z=16&output=embed`}
-                      loading="lazy"
-                    />
-                  </div>
+            <section className="ranking-list" aria-label="Lista do ranking">
+              <article className="ranking-row">
+                <span className="ranking-place">1</span>
+                <span className="ranking-avatar">{initials(profile.name || 'Hooper')}</span>
+                <span>
+                  <strong>@{profileHandle}</strong>
+                  <small>{currentRank}</small>
+                </span>
+                <b>{activityPoints.toLocaleString('pt-BR')} pts</b>
+                <Icon name="chevron" />
+              </article>
+              <article className="empty-state">
+                O ranking publico ainda nao tem outros atletas reais conectados nesta instalacao.
+              </article>
+            </section>
 
-                  <div className="court-map-actions">
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${selectedCourt.lat},${selectedCourt.lng}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Icon name="map" />
-                      Abrir rota
-                    </a>
-                    <button
-                      type="button"
-                      className={joinedRuns.includes(selectedCourt.id) ? 'following' : ''}
-                      onClick={() =>
-                        setJoinedRuns((current) =>
-                          current.includes(selectedCourt.id)
-                            ? current.filter((id) => id !== selectedCourt.id)
-                            : [...current, selectedCourt.id],
-                        )
-                      }
-                    >
-                      {joinedRuns.includes(selectedCourt.id) ? 'Voce vai' : 'Participar'}
-                    </button>
-                  </div>
-                </article>
+            <article className="ranking-rewards">
+              <span><Icon name="trophy" /></span>
+              <div>
+                <strong>Suba no ranking e desbloqueie recompensas exclusivas!</strong>
+                <p>Quanto mais pontos, mais destaque na comunidade.</p>
+              </div>
+              <button type="button" onClick={() => setActiveView('profile')}>Ver meu perfil</button>
+            </article>
 
-                <section className="pickup-board" aria-label="Rachoes nesta quadra">
-                  <div className="section-heading compact">
-                    <div>
-                      <p className="eyebrow">Nesta quadra</p>
-                      <h2>Rachoes marcados</h2>
-                    </div>
-                  </div>
-
-                  {selectedCourtRuns.length ? (
-                    selectedCourtRuns.map((run) => (
-                      <article key={run.id} className="pickup-card">
-                        <div>
-                          <span>{run.time}</span>
-                          <strong>{run.title}</strong>
-                          <p>{run.notes}</p>
-                        </div>
-                        <dl>
-                          <div>
-                            <dt>Host</dt>
-                            <dd>{run.host}</dd>
-                          </div>
-                          <div>
-                            <dt>Confirmados</dt>
-                            <dd>{run.going.length}</dd>
-                          </div>
-                        </dl>
-                        <button
-                          type="button"
-                          className={run.going.includes(profile.name.trim() || 'Voce') ? 'following' : ''}
-                          onClick={() => toggleRunPresence(run.id)}
-                        >
-                          {run.going.includes(profile.name.trim() || 'Voce') ? 'Estou dentro' : 'Vou participar'}
-                        </button>
-                      </article>
-                    ))
-                  ) : (
-                    <p className="empty-state">Ainda nao tem rachao marcado aqui. Crie o primeiro chamado para essa quadra.</p>
-                  )}
-                </section>
-              </section>
-            ) : (
-              <>
-                <article className="metric-card accent">
-                  <Icon name="time" />
-                  <span>Chamada aberta</span>
-                  <strong>Monte um rachao perto de voce.</strong>
-                  <p>Crie uma chamada com local, horario e quantidade de jogadores para a comunidade confirmar presenca.</p>
-                </article>
-
-                <form className="run-create-card" onSubmit={handleCreatePickupRun}>
-                  <div className="section-heading compact">
-                    <div>
-                      <p className="eyebrow">Criar rachao</p>
-                      <h2>Chamar a galera</h2>
-                    </div>
-                  </div>
-
-                  <label className="field">
-                    <span>Quadra</span>
-                    <select
-                      value={runDraft.courtId}
-                      onChange={(event) => {
-                        setRunDraft((current) => ({ ...current, courtId: event.target.value }));
-                        setRunFormError('');
-                      }}
-                    >
-                      {courts.map((court) => (
-                        <option key={court.id} value={court.id}>{court.name}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <div className="run-create-grid">
-                    <label className="field">
-                      <span>Titulo</span>
-                      <input
-                        value={runDraft.title}
-                        onChange={(event) => {
-                          setRunDraft((current) => ({ ...current, title: event.target.value }));
-                          setRunFormError('');
-                        }}
-                        placeholder="3x3 no Centro"
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Horario</span>
-                      <input
-                        value={runDraft.time}
-                        onChange={(event) => {
-                          setRunDraft((current) => ({ ...current, time: event.target.value }));
-                          setRunFormError('');
-                        }}
-                        placeholder="Hoje, 20:00"
-                      />
-                    </label>
-                  </div>
-
-                  <label className="field">
-                    <span>Jogadores</span>
-                    <input
-                      value={runDraft.players}
-                      onChange={(event) => setRunDraft((current) => ({ ...current, players: event.target.value }))}
-                      placeholder="Faltam 2, aberto, 5x5..."
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Recado</span>
-                    <textarea
-                      value={runDraft.notes}
-                      onChange={(event) => setRunDraft((current) => ({ ...current, notes: event.target.value }))}
-                      placeholder="Nivel, regras, levar bola, valor..."
-                    />
-                  </label>
-
-                  {runFormError && <p className="profile-edit-error">{runFormError}</p>}
-
-                  <button type="submit" className="profile-save-button">Postar rachao</button>
-                </form>
-
-                <section className="pickup-board" aria-label="Rachoes postados">
-                  <div className="section-heading compact">
-                    <div>
-                      <p className="eyebrow">Confirmar presenca</p>
-                      <h2>Chamadas abertas</h2>
-                    </div>
-                  </div>
-
-                  {pickupRuns.map((run) => {
-                    const court = courts.find((item) => item.id === run.courtId);
-                    return (
-                      <article key={run.id} className="pickup-card">
-                        <div>
-                          <span>{run.time} - {court?.address || 'Brasil'}</span>
-                          <strong>{run.title}</strong>
-                          <p>{run.notes}</p>
-                        </div>
-                        <dl>
-                          <div>
-                            <dt>Jogadores</dt>
-                            <dd>{run.players}</dd>
-                          </div>
-                          <div>
-                            <dt>Confirmados</dt>
-                            <dd>{run.going.length}</dd>
-                          </div>
-                        </dl>
-                        <div className="pickup-actions">
-                          <button type="button" onClick={() => court && openCourtDetail(court.id)}>
-                            Ver quadra
-                          </button>
-                          <button
-                            type="button"
-                            className={run.going.includes(profile.name.trim() || 'Voce') ? 'following' : ''}
-                            onClick={() => toggleRunPresence(run.id)}
-                          >
-                            {run.going.includes(profile.name.trim() || 'Voce') ? 'Estou dentro' : 'Vou participar'}
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </section>
-
-                <div className="run-list">
-                  {courts.map((court) => (
-                    <article key={court.id} className="run-card">
-                      <div>
-                        <span>{court.status}</span>
-                        <strong>{court.name}</strong>
-                        <p>{court.address}</p>
-                      </div>
-                      <dl>
-                        <div>
-                          <dt>Preco</dt>
-                          <dd>{court.price}</dd>
-                        </div>
-                        <div>
-                          <dt>Piso</dt>
-                          <dd>{court.surface}</dd>
-                        </div>
-                      </dl>
-                      <button
-                        type="button"
-                        className={joinedRuns.includes(court.id) ? 'following' : ''}
-                        onClick={() => openCourtDetail(court.id)}
-                      >
-                        {joinedRuns.includes(court.id) ? 'Ver mapa' : 'Participar'}
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              </>
-            )}
+            <section className="ranking-system" aria-label="Sistema de ranks">
+              <h2>Sistema de ranks</h2>
+              <div className="rank-medals">
+                {['Rookie', 'Sixth Man', 'Starter', 'All-Star', 'MVP', 'Hall of Fame'].map((rank) => (
+                  <span key={rank} className={rank === currentRank ? 'current' : ''}>
+                    <i />
+                    <b>{rank}</b>
+                  </span>
+                ))}
+              </div>
+              <div className="rank-progress"><i style={{ width: `${rankProgress}%` }} /></div>
+              <footer>
+                <span>Seu rank atual <b>{currentRank}</b></span>
+                <span>Proximo rank <b>{nextRank}</b></span>
+                <span>Faltam {Math.max(nextRankPoints - activityPoints, 0).toLocaleString('pt-BR')} pts</span>
+              </footer>
+            </section>
           </section>
         )}
 
@@ -1224,6 +1339,11 @@ function App() {
             </label>
 
             <section className="direct-list" aria-label="Conversas">
+              {filteredDirectThreads.length === 0 && (
+                <article className="empty-state">
+                  Nenhuma conversa ainda. Responda a um story ou compartilhe um post para iniciar um direct.
+                </article>
+              )}
               {filteredDirectThreads.map((thread) => {
                 const lastMessage = thread.messages[thread.messages.length - 1];
 
@@ -1231,7 +1351,7 @@ function App() {
                   <button
                     key={thread.id}
                     type="button"
-                    className={`direct-thread${thread.id === selectedDirectThread.id ? ' active' : ''}`}
+                    className={`direct-thread${thread.id === selectedDirectThread?.id ? ' active' : ''}`}
                     onClick={() => setSelectedDirectId(thread.id)}
                   >
                     <span className="direct-avatar">
@@ -1319,6 +1439,11 @@ function App() {
                 </div>
               </div>
 
+              {followers.length === 0 && (
+                <article className="empty-state">
+                  Nenhum seguidor real ainda. Quando alguem interagir com voce, aparece aqui.
+                </article>
+              )}
               {followers.map((name) => {
                 const hooper = hoopers.find((item) => item.name === name);
                 const followsBack = following.includes(name);
@@ -1353,6 +1478,11 @@ function App() {
               </div>
 
               <div className="notification-list">
+                {notifications.length === 0 && (
+                  <article className="empty-state">
+                    Sem atividade por enquanto. Curtidas, salvos, posts e jogos vao aparecer aqui.
+                  </article>
+                )}
                 {notifications.map((notification) => (
                   <article key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'}`}>
                     <span className={`notification-kind ${notification.kind}`}>
@@ -1382,54 +1512,74 @@ function App() {
         )}
 
         {activeView === 'profile' && (
-          <section className="screen-stack instagram-profile">
-            <header className="profile-topbar">
-              <button type="button" onClick={openProfileEditor} aria-label="Editar usuario">
-                @{profileHandle}
+          <section className="screen-stack instagram-Profile">
+            <header className="Profile-topbar">
+              <button type="button" onClick={() => setActiveView('feed')} aria-label="Voltar ao feed">
                 <Icon name="chevron" />
               </button>
+              <strong className="Profile-wordmark">Hoopers <span>Radar</span></strong>
               <div>
-                <span className="profile-live-dot" title={apiStatus === 'online' ? 'Online' : 'Modo local'} />
-                <button type="button" aria-label="Abrir direct" onClick={() => openDirect()}>
-                  <Icon name="send" />
+                <button className="notification-button" type="button" aria-label="Notificacoes" onClick={() => setActiveView('notifications')}>
+                  <Icon name="bell" />
+                  {unreadNotifications > 0 && <span>{unreadNotifications}</span>}
+                </button>
+                <button type="button" aria-label="Mais opcoes" onClick={openProfileEditor}>
+                  <Icon name="more" />
                 </button>
               </div>
             </header>
 
-            <section className="profile-summary" aria-label="Resumo do perfil">
-              <div className="profile-avatar-ring">
-                <span className="profile-avatar instagram-avatar">
+            <section className="Profile-hero" aria-label="Resumo do perfil">
+              <div className="Profile-avatar-ring">
+                <span className="Profile-avatar instagram-avatar">
                   {profile.avatarUrl ? (
                     <img src={profile.avatarUrl} alt={`${profile.name || 'Perfil'} avatar`} />
                   ) : (
                     initials(profile.name || 'Hooper')
                   )}
                 </span>
+                <button type="button" onClick={openProfileEditor} aria-label="Editar foto">
+                  <Icon name="edit" />
+                </button>
               </div>
 
-              <div className="profile-counts">
-                <span><b>{posts.length}</b> posts</span>
-                <span><b>{followerCount}</b> seguidores</span>
-                <span><b>{following.length}</b> seguindo</span>
+              <div className="Profile-identity">
+                <h1>@{profileHandle}</h1>
+                <strong>{profile.name || 'Meu perfil'}</strong>
+                <p><Icon name="location" /> {profile.city || 'Minha cidade'}</p>
+                <span><Icon name="shield" /> {profile.position} | {profile.level}</span>
               </div>
             </section>
 
-            <section className="profile-instagram-bio">
-              <strong>{profile.name || 'Seu nome'}</strong>
-              <p>{profile.position} / {profile.level}</p>
-              <p>{profile.city} - procurando rachoes, treinos e conexoes no basket.</p>
-              {profile.characteristics && <p>{profile.characteristics}</p>}
-              {profile.availability && <span>{profile.availability}</span>}
+            <section className="Profile-counts" aria-label="Estatisticas do perfil">
+              <span><b>{profilePosts.length}</b>Posts</span>
+              <span><b>{followerCount.toLocaleString('pt-BR')}</b>Seguidores</span>
+              <span><b>{following.length}</b>Seguindo</span>
+              <span><b>{profileRunCount}</b>Jogos</span>
             </section>
 
-            <section className="profile-actions">
-              <button type="button" onClick={openProfileEditor}>Editar perfil</button>
-              <button type="button" onClick={handleShareProfile}>Compartilhar</button>
+            <section className="Profile-rank-card" aria-label="Nivel atual">
+              <span className="Profile-rank-emblem" aria-hidden="true" />
+              <div>
+                <small>Nivel atual</small>
+                <strong>{currentRank}</strong>
+                <span className="Profile-xp-bar"><i style={{ width: `${rankProgress}%` }} /></span>
+                <p>{activityPoints.toLocaleString('pt-BR')} / {nextRankPoints.toLocaleString('pt-BR')} XP</p>
+              </div>
+              <button type="button" onClick={() => setActiveView('runs')}>
+                Ver ranks
+                <Icon name="chevron" />
+              </button>
+            </section>
+
+            <section className="Profile-actions">
+              <button type="button" onClick={openProfileEditor}><Icon name="edit" /> Editar perfil</button>
+              <button type="button" onClick={handleShareProfile}><Icon name="share" /> Compartilhar perfil</button>
             </section>
 
             {isEditingProfile && (
-              <form className="profile-edit-card" onSubmit={handleSaveProfile}>
-                <div className="profile-edit-head">
+              <form className="Profile-edit-card" onSubmit={handleSaveProfile}>
+                <div className="Profile-edit-head">
                   <div>
                     <p className="eyebrow">Editar perfil</p>
                     <h2>Dados do atleta</h2>
@@ -1437,12 +1587,12 @@ function App() {
                   <button type="button" onClick={() => setIsEditingProfile(false)}>Cancelar</button>
                 </div>
 
-                <div className="profile-image-preview">
-                  <div className={`profile-cover-preview${profileDraft.bannerUrl ? ' has-cover' : ''}`}>
+                <div className="Profile-image-preview">
+                  <div className={`Profile-cover-preview${profileDraft.bannerUrl ? ' has-cover' : ''}`}>
                     {profileDraft.bannerUrl && (
-                      <img className="profile-cover-image" src={profileDraft.bannerUrl} alt="Banner do perfil" />
+                      <img className="Profile-cover-image" src={profileDraft.bannerUrl} alt="Banner do perfil" />
                     )}
-                    <span className="profile-avatar preview-avatar">
+                    <span className="Profile-avatar preview-avatar">
                       {profileDraft.avatarUrl ? (
                         <img src={profileDraft.avatarUrl} alt="Avatar preview" />
                       ) : (
@@ -1453,7 +1603,7 @@ function App() {
                   <p className="small-meta">Cole URLs de imagem para banner e avatar para atualizar a aparencia do perfil.</p>
                 </div>
 
-                <div className="profile-edit-grid two">
+                <div className="Profile-edit-grid two">
                   <label className="field">
                     <span>Banner do perfil</span>
                     <div className="image-input-row">
@@ -1503,7 +1653,7 @@ function App() {
                   <input value={profileDraft.city} onChange={(event) => updateProfileDraft('city', event.target.value)} />
                 </label>
 
-                <div className="profile-edit-grid">
+                <div className="Profile-edit-grid">
                   <label className="field">
                     <span>Idade</span>
                     <input
@@ -1524,7 +1674,7 @@ function App() {
                   </label>
                 </div>
 
-                <div className="profile-edit-grid two">
+                <div className="Profile-edit-grid two">
                   <label className="field">
                     <span>Posicao</span>
                     <select value={profileDraft.position} onChange={(event) => updateProfileDraft('position', event.target.value)}>
@@ -1571,41 +1721,70 @@ function App() {
                   />
                 </label>
 
-                {profileError && <p className="profile-edit-error">{profileError}</p>}
+                {profileError && <p className="Profile-edit-error">{profileError}</p>}
 
-                <button className="profile-save-button" type="submit" disabled={isSavingProfile}>
+                <button className="Profile-save-button" type="submit" disabled={isSavingProfile}>
                   {isSavingProfile ? 'Salvando...' : 'Salvar perfil'}
                 </button>
               </form>
             )}
 
-            <section className="profile-highlights" aria-label="Destaques do perfil">
+            <div className="Profile-section-head">
+              <h2>Destaques</h2>
+              <button type="button" onClick={openComposer}>Novo</button>
+            </div>
+
+            <section className="Profile-highlights" aria-label="Destaques do perfil">
               <button type="button" onClick={() => setActiveView('runs')}>
                 <span><Icon name="court" /></span>
-                <small>Rachoes</small>
+                <small>Jogos</small>
               </button>
               <button type="button" onClick={() => openTagFeed('TreinoLivre')}>
                 <span><Icon name="trophy" /></span>
-                <small>Highlights</small>
+                <small>Treinos</small>
               </button>
               <button type="button" onClick={() => openTagFeed('MalletPR')}>
-                <span><Icon name="heart" /></span>
-                <small>Favoritos</small>
+                <span><Icon name="grid" /></span>
+                <small>Cidade</small>
+              </button>
+              <button type="button" onClick={() => openTagFeed('Basquete')}>
+                <span><Icon name="person" /></span>
+                <small>Feed</small>
               </button>
               <button type="button" onClick={() => openTagFeed('Basquete')}>
                 <span><Icon name="star" /></span>
-                <small>Treinos</small>
+                <small>Salvos</small>
+              </button>
+              <button type="button" onClick={openComposer}>
+                <span><Icon name="plus" /></span>
+                <small>Novo</small>
               </button>
             </section>
 
-            <section className="profile-tabs" aria-label="Conteudo do perfil">
+            <section className="Profile-tabs" aria-label="Conteudo do perfil">
               <button
                 type="button"
                 className={profileTab === 'posts' ? 'active' : ''}
                 onClick={() => setProfileTab('posts')}
                 aria-label="Publicacoes"
               >
-                <Icon name="court" />
+                <Icon name="grid" />
+              </button>
+              <button
+                type="button"
+                className={profileTab === 'reels' ? 'active' : ''}
+                onClick={() => setProfileTab('reels')}
+                aria-label="Reels"
+              >
+                <Icon name="camera" />
+              </button>
+              <button
+                type="button"
+                className={profileTab === 'saved' ? 'active' : ''}
+                onClick={() => setProfileTab('saved')}
+                aria-label="Salvos"
+              >
+                <Icon name="bookmark" />
               </button>
               <button
                 type="button"
@@ -1617,13 +1796,20 @@ function App() {
               </button>
             </section>
 
-            {profileTab === 'posts' ? (
-              <section className="profile-post-grid">
-                {profilePosts.map((post, index) => (
+            {profileTab === 'posts' || profileTab === 'saved' ? (
+              <section className="Profile-post-grid">
+                {visibleProfileGridPosts.length === 0 && (
+                  <article className="Profile-empty-grid">
+                    <Icon name="bookmark" />
+                    <strong>Nenhum post salvo ainda</strong>
+                    <p>Salve publicacoes do feed para montar sua colecao.</p>
+                  </article>
+                )}
+                {visibleProfileGridPosts.map((post, index) => (
                   <button
                     key={post.id}
                     type="button"
-                    className="profile-post-tile"
+                    className="Profile-post-tile"
                     onClick={() => setSelectedPostId(post.id)}
                     aria-label={`Abrir post ${post.tag}`}
                   >
@@ -1637,7 +1823,7 @@ function App() {
                 ))}
               </section>
             ) : (
-              <article className="profile-empty-grid">
+              <article className="Profile-empty-grid">
                 <Icon name="person" />
                 <strong>Nenhuma marcacao ainda</strong>
                 <p>Quando outro hooper marcar voce em um post, ele aparece aqui.</p>
@@ -1699,13 +1885,13 @@ function App() {
           <Icon name="search" />
           <span>Explorar</span>
         </button>
-        <button className={activeView === 'runs' ? 'active' : ''} type="button" onClick={() => setActiveView('runs')}>
-          <Icon name="court" />
-          <span>Rachoes</span>
+        <button className="nav-create" type="button" onClick={openComposer} aria-label="Criar post">
+          <Icon name="plus" />
+          <span>Criar</span>
         </button>
-        <button className={activeView === 'direct' ? 'active' : ''} type="button" onClick={() => openDirect()}>
-          <Icon name="send" />
-          <span>Direct</span>
+        <button className={activeView === 'runs' ? 'active' : ''} type="button" onClick={() => setActiveView('runs')}>
+          <Icon name="trophy" />
+          <span>Ranking</span>
         </button>
         <button className={activeView === 'profile' ? 'active' : ''} type="button" onClick={() => setActiveView('profile')}>
           <Icon name="person" />
@@ -1713,10 +1899,81 @@ function App() {
         </button>
       </nav>
 
-      {activeView !== 'profile' && (
-        <button type="button" className="floating-compose" onClick={() => setActiveView('feed')} aria-label="Criar post">
+      {activeView !== 'profile' && activeView !== 'feed' && (
+        <button type="button" className="floating-compose" onClick={openComposer} aria-label="Criar post">
           <Icon name="chat" />
         </button>
+      )}
+
+      {isComposerOpen && (
+        <section className="insta-modal" role="dialog" aria-modal="true" aria-label="Criar publicacao">
+          <button className="insta-modal-backdrop" type="button" onClick={() => setIsComposerOpen(false)} aria-label="Fechar"></button>
+          <form className="insta-composer" onSubmit={handleSubmitComposer}>
+            <header>
+              <button type="button" onClick={() => setIsComposerOpen(false)} aria-label="Cancelar">x</button>
+              <strong>Nova publicacao</strong>
+              <button type="submit" disabled={!composerText.trim()}>Compartilhar</button>
+            </header>
+            <label>
+              <span>Legenda</span>
+              <textarea
+                value={composerText}
+                onChange={(event) => setComposerText(event.target.value)}
+                placeholder="Escreva uma legenda, use #tags e chame a galera..."
+                rows={5}
+                maxLength={220}
+              />
+            </label>
+            <label>
+              <span>URL da imagem</span>
+              <input
+                value={composerImageUrl}
+                onChange={(event) => setComposerImageUrl(event.target.value)}
+                placeholder="https://..."
+              />
+            </label>
+            <p>{220 - composerText.length} caracteres restantes</p>
+          </form>
+        </section>
+      )}
+
+      {selectedCommentPost && (
+        <section className="insta-modal" role="dialog" aria-modal="true" aria-label="Comentarios">
+          <button className="insta-modal-backdrop" type="button" onClick={() => setSelectedCommentPostId(null)} aria-label="Fechar"></button>
+          <article className="comments-sheet">
+            <header>
+              <button type="button" onClick={() => setSelectedCommentPostId(null)} aria-label="Fechar">x</button>
+              <strong>Comentarios</strong>
+              <span>{selectedCommentPost.replies}</span>
+            </header>
+            <div className="comment-original">
+              <span className="social-avatar">{initials(selectedCommentPost.author)}</span>
+              <p><b>{selectedCommentPost.handle}</b> {selectedCommentPost.text}</p>
+            </div>
+            <div className="comment-list">
+              {selectedComments.length === 0 ? (
+                <p className="comment-empty">Seja o primeiro a comentar.</p>
+              ) : (
+                selectedComments.map((comment) => (
+                  <div key={comment.id} className="comment-item">
+                    <span className="social-avatar">{initials(comment.author)}</span>
+                    <p><b>{comment.handle}</b> {comment.text}<small>{comment.time}</small></p>
+                  </div>
+                ))
+              )}
+            </div>
+            <form className="comment-composer" onSubmit={handleSubmitComment}>
+              <input
+                value={commentDraft}
+                onChange={(event) => setCommentDraft(event.target.value)}
+                placeholder="Adicione um comentario..."
+              />
+              <button type="submit" disabled={!commentDraft.trim()}>
+                <Icon name="send" />
+              </button>
+            </form>
+          </article>
+        </section>
       )}
     </div>
   );

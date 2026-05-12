@@ -1,9 +1,10 @@
 node_modules
 dist
+.git
 .vite
-.DS_Store
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-*.zip
-*.tar.gz
+tsconfig.node.tsbuildinfo
+vite.config.d.ts
+vite.config.js
