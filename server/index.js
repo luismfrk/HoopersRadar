@@ -25,6 +25,7 @@ const initialState = {
     city: 'Mallet-PR',
     bannerUrl: '',
     avatarUrl: '',
+    rankingPoints: 0,
   },
   partners: [],
   courts: [

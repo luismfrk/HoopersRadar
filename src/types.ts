@@ -12,6 +12,7 @@ export type PlayerProfile = {
   city: string;
   bannerUrl: string;
   avatarUrl: string;
+  rankingPoints: number;
 };
 
 export type Partner = {

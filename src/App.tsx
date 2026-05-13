@@ -56,8 +56,8 @@ type PostComment = {
   time: string;
 };
 
-const positions = ['Armador', 'Ala', 'Pivo'];
-const levels = ['Iniciante', 'Intermediario', 'Avancado'];
+const positions = ['Armador', 'Ala-armador', 'Ala', 'Ala-pivo', 'Pivo'];
+const levels = ['Recreativo', 'Intermediario', 'Competitivo'];
 const postThumbs = [
   'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=500&q=80',
   'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=500&q=80',
@@ -87,6 +87,7 @@ const initialProfile: PlayerProfile = {
   city: 'Mallet-PR',
   bannerUrl: '',
   avatarUrl: '',
+  rankingPoints: 0,
 };
 
 const viewCopy: Record<View, { eyebrow: string; title: string }> = {
@@ -187,6 +188,8 @@ function App() {
   const [gameTimeFilter, setGameTimeFilter] = useState<GameTimeFilter>('any');
   const [gameLocationFilter, setGameLocationFilter] = useState<GameLocationFilter>('profile');
   const [gameCourtFilter, setGameCourtFilter] = useState('');
+  const [scoreDraft, setScoreDraft] = useState('');
+  const [scoreReason, setScoreReason] = useState('Partida jogada');
 
   const screen = viewCopy[activeView];
   const profileHandle = profile.username || (profile.name || 'hooper').toLowerCase().replace(/\s+/g, '.');
@@ -253,7 +256,9 @@ function App() {
   }, [directSearch, directThreads]);
   const selectedDirectThread = directThreads.find((thread) => thread.id === selectedDirectId) || directThreads[0];
   const profileRunCount = pickupRuns.filter((run) => run.host === (profile.name.trim() || 'Voce')).length;
-  const activityPoints = profilePosts.length * 80 + joinedRuns.length * 120 + profileRunCount * 160 + savedPostIds.length * 20;
+  const automaticPoints = profilePosts.length * 80 + joinedRuns.length * 120 + profileRunCount * 160 + savedPostIds.length * 20;
+  const manualRankingPoints = Number(profile.rankingPoints || 0);
+  const activityPoints = automaticPoints + manualRankingPoints;
   const currentRank = activityPoints >= 2000 ? 'All-Star' : activityPoints >= 1000 ? 'Starter' : activityPoints >= 400 ? 'Sixth Man' : 'Rookie';
   const nextRank = activityPoints >= 2000 ? 'MVP' : activityPoints >= 1000 ? 'All-Star' : activityPoints >= 400 ? 'Starter' : 'Sixth Man';
   const nextRankPoints = activityPoints >= 2000 ? 3200 : activityPoints >= 1000 ? 2000 : activityPoints >= 400 ? 1000 : 400;
@@ -474,6 +479,36 @@ function App() {
     } catch {
       // Sharing can be cancelled by the user.
     }
+  };
+
+  const handleAddRankingPoints = async (points: number, reason = scoreReason) => {
+    const cleanPoints = Math.max(0, Math.round(points));
+    if (!cleanPoints) return;
+
+    const nextProfile = {
+      ...profile,
+      rankingPoints: manualRankingPoints + cleanPoints,
+    };
+
+    setProfile(nextProfile);
+    setScoreDraft('');
+    pushNotification({
+      kind: 'system',
+      title: 'Pontuacao adicionada',
+      text: `${cleanPoints.toLocaleString('pt-BR')} pts por ${reason.toLowerCase()}.`,
+    });
+
+    try {
+      await api.updateProfile(nextProfile);
+      setApiStatus('online');
+    } catch {
+      setApiStatus('offline');
+    }
+  };
+
+  const handleSubmitRankingPoints = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleAddRankingPoints(Number(scoreDraft.replace(',', '.')));
   };
 
   const handleCommentPost = (id: string) => {
@@ -1282,6 +1317,48 @@ function App() {
               </article>
             </section>
 
+            <form className="ranking-score-card" onSubmit={handleSubmitRankingPoints}>
+              <div>
+                <span><Icon name="plus" /></span>
+                <div>
+                  <strong>Adicionar pontuacao</strong>
+                  <p>Registre pontos de partidas, treinos ou desafios para atualizar seu rank.</p>
+                </div>
+              </div>
+              <div className="ranking-score-fields">
+                <label className="field">
+                  <span>Motivo</span>
+                  <select value={scoreReason} onChange={(event) => setScoreReason(event.target.value)}>
+                    <option>Partida jogada</option>
+                    <option>Vitoria</option>
+                    <option>Treino concluido</option>
+                    <option>Desafio da comunidade</option>
+                    <option>Bonus manual</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Pontos</span>
+                  <input
+                    inputMode="numeric"
+                    value={scoreDraft}
+                    onChange={(event) => setScoreDraft(event.target.value.replace(/[^\d]/g, ''))}
+                    placeholder="Ex: 50"
+                  />
+                </label>
+              </div>
+              <div className="ranking-score-actions">
+                {[10, 50, 100].map((points) => (
+                  <button key={points} type="button" onClick={() => handleAddRankingPoints(points, `atalho +${points}`)}>
+                    +{points}
+                  </button>
+                ))}
+                <button type="submit">Adicionar</button>
+              </div>
+              <small>
+                Automatico: {automaticPoints.toLocaleString('pt-BR')} pts | Manual: {manualRankingPoints.toLocaleString('pt-BR')} pts
+              </small>
+            </form>
+
             <section className="ranking-list" aria-label="Lista do ranking">
               <article className="ranking-row">
                 <span className="ranking-place">1</span>
@@ -1600,25 +1677,19 @@ function App() {
                       )}
                     </span>
                   </div>
-                  <p className="small-meta">Cole URLs de imagem para banner e avatar para atualizar a aparencia do perfil.</p>
+                  <p className="small-meta">Use fotos do seu dispositivo para deixar o perfil com cara de atleta.</p>
                 </div>
 
                 <div className="Profile-edit-grid two">
                   <label className="field">
-                    <span>Banner do perfil</span>
+                    <span>Capa do perfil</span>
                     <div className="image-input-row">
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(event) => event.target.files?.[0] && handleImageUpload('bannerUrl', event.target.files[0])}
                       />
-                      <span>ou URL</span>
                     </div>
-                    <input
-                      value={(profileDraft.bannerUrl?.startsWith('data:')) ? '' : (profileDraft.bannerUrl || '')}
-                      onChange={(event) => !event.target.value.startsWith('data:') && updateProfileDraft('bannerUrl', event.target.value)}
-                      placeholder="https://..."
-                    />
                   </label>
                   <label className="field">
                     <span>Foto do perfil</span>
@@ -1628,29 +1699,35 @@ function App() {
                         accept="image/*"
                         onChange={(event) => event.target.files?.[0] && handleImageUpload('avatarUrl', event.target.files[0])}
                       />
-                      <span>ou URL</span>
                     </div>
-                    <input
-                      value={(profileDraft.avatarUrl?.startsWith('data:')) ? '' : (profileDraft.avatarUrl || '')}
-                      onChange={(event) => !event.target.value.startsWith('data:') && updateProfileDraft('avatarUrl', event.target.value)}
-                      placeholder="https://..."
-                    />
                   </label>
                 </div>
 
                 <label className="field">
                   <span>Nome</span>
-                  <input value={profileDraft.name} onChange={(event) => updateProfileDraft('name', event.target.value)} />
+                  <input
+                    value={profileDraft.name}
+                    onChange={(event) => updateProfileDraft('name', event.target.value)}
+                    placeholder="Seu nome nas quadras"
+                  />
                 </label>
 
                 <label className="field">
-                  <span>Nome de usuario</span>
-                  <input value={profileDraft.username} onChange={(event) => updateProfileDraft('username', event.target.value)} />
+                  <span>@ usuario</span>
+                  <input
+                    value={profileDraft.username}
+                    onChange={(event) => updateProfileDraft('username', event.target.value)}
+                    placeholder="ex: luis.hoops"
+                  />
                 </label>
 
                 <label className="field">
-                  <span>Cidade</span>
-                  <input value={profileDraft.city} onChange={(event) => updateProfileDraft('city', event.target.value)} />
+                  <span>Cidade base</span>
+                  <input
+                    value={profileDraft.city}
+                    onChange={(event) => updateProfileDraft('city', event.target.value)}
+                    placeholder="Cidade-UF"
+                  />
                 </label>
 
                 <div className="Profile-edit-grid">
@@ -1660,17 +1737,26 @@ function App() {
                       inputMode="numeric"
                       value={profileDraft.age}
                       onChange={(event) => updateProfileDraft('age', event.target.value)}
+                      placeholder="Ex: 22"
                     />
                   </label>
 
                   <label className="field">
                     <span>Altura</span>
-                    <input value={profileDraft.height} onChange={(event) => updateProfileDraft('height', event.target.value)} />
+                    <input
+                      value={profileDraft.height}
+                      onChange={(event) => updateProfileDraft('height', event.target.value)}
+                      placeholder="Ex: 1,82 m"
+                    />
                   </label>
 
                   <label className="field">
                     <span>Peso</span>
-                    <input value={profileDraft.weight} onChange={(event) => updateProfileDraft('weight', event.target.value)} />
+                    <input
+                      value={profileDraft.weight}
+                      onChange={(event) => updateProfileDraft('weight', event.target.value)}
+                      placeholder="Opcional"
+                    />
                   </label>
                 </div>
 
@@ -1695,7 +1781,7 @@ function App() {
                 </div>
 
                 <label className="field">
-                  <span>Disponibilidade</span>
+                  <span>Quando joga</span>
                   <input
                     value={profileDraft.availability}
                     onChange={(event) => updateProfileDraft('availability', event.target.value)}
@@ -1704,20 +1790,20 @@ function App() {
                 </label>
 
                 <label className="field">
-                  <span>Caracteristicas</span>
+                  <span>Estilo de jogo</span>
                   <textarea
                     value={profileDraft.characteristics}
                     onChange={(event) => updateProfileDraft('characteristics', event.target.value)}
-                    placeholder="Arremesso, defesa, velocidade..."
+                    placeholder="Arremesso, defesa, velocidade, passe..."
                   />
                 </label>
 
                 <label className="field">
-                  <span>Historia no basket</span>
+                  <span>Bio de jogador</span>
                   <textarea
                     value={profileDraft.history}
                     onChange={(event) => updateProfileDraft('history', event.target.value)}
-                    placeholder="Conte sua caminhada nas quadras"
+                    placeholder="Conte como joga, onde costuma jogar e o que procura"
                   />
                 </label>
 
@@ -1735,25 +1821,25 @@ function App() {
             </div>
 
             <section className="Profile-highlights" aria-label="Destaques do perfil">
-              <button type="button" onClick={() => setActiveView('runs')}>
+              <button type="button" onClick={() => { setGamesTab('mine'); setActiveView('explore'); }}>
                 <span><Icon name="court" /></span>
-                <small>Jogos</small>
+                <small>Meus jogos</small>
               </button>
-              <button type="button" onClick={() => openTagFeed('TreinoLivre')}>
+              <button type="button" onClick={() => setActiveView('runs')}>
                 <span><Icon name="trophy" /></span>
-                <small>Treinos</small>
+                <small>Ranking</small>
               </button>
-              <button type="button" onClick={() => openTagFeed('MalletPR')}>
+              <button type="button" onClick={() => setProfileTab('posts')}>
                 <span><Icon name="grid" /></span>
-                <small>Cidade</small>
+                <small>Posts</small>
               </button>
-              <button type="button" onClick={() => openTagFeed('Basquete')}>
-                <span><Icon name="person" /></span>
-                <small>Feed</small>
-              </button>
-              <button type="button" onClick={() => openTagFeed('Basquete')}>
-                <span><Icon name="star" /></span>
+              <button type="button" onClick={() => setProfileTab('saved')}>
+                <span><Icon name="bookmark" /></span>
                 <small>Salvos</small>
+              </button>
+              <button type="button" onClick={openProfileEditor}>
+                <span><Icon name="edit" /></span>
+                <small>Editar</small>
               </button>
               <button type="button" onClick={openComposer}>
                 <span><Icon name="plus" /></span>
